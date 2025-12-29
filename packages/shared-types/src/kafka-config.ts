@@ -20,13 +20,27 @@ export interface KafkaEnvConfig {
 
 /**
  * Load Kafka configuration from environment variables
+ *
+ * Supports both old and new env var names for compatibility:
+ * - KAFKA_USERNAME / KAFKA_SASL_USERNAME
+ * - KAFKA_PASSWORD / KAFKA_SASL_PASSWORD
+ *
+ * Auto-detects SASL_SSL if username/password are provided.
  */
 export function loadKafkaEnvConfig(): KafkaEnvConfig {
+  // Support both KAFKA_USERNAME and KAFKA_SASL_USERNAME
+  const username = process.env.KAFKA_USERNAME ?? process.env.KAFKA_SASL_USERNAME;
+  const password = process.env.KAFKA_PASSWORD ?? process.env.KAFKA_SASL_PASSWORD;
+
+  // Auto-detect security protocol: if credentials are provided, use SASL_SSL
+  const explicitProtocol = process.env.KAFKA_SECURITY_PROTOCOL as SecurityProtocol | undefined;
+  const securityProtocol = explicitProtocol ?? (username && password ? 'SASL_SSL' : 'PLAINTEXT');
+
   return {
     brokers: process.env.KAFKA_BROKERS ?? 'localhost:9092',
-    securityProtocol: (process.env.KAFKA_SECURITY_PROTOCOL ?? 'PLAINTEXT') as SecurityProtocol,
-    saslUsername: process.env.KAFKA_SASL_USERNAME,
-    saslPassword: process.env.KAFKA_SASL_PASSWORD,
+    securityProtocol,
+    saslUsername: username,
+    saslPassword: password,
     caCert: process.env.KAFKA_CA_CERT,
   };
 }
@@ -84,11 +98,12 @@ export function createKafkaClient(clientId: string): Kafka {
   // Configure SASL for SASL_SSL
   if (envConfig.securityProtocol === 'SASL_SSL') {
     if (!envConfig.saslUsername || !envConfig.saslPassword) {
-      throw new Error('KAFKA_SASL_USERNAME and KAFKA_SASL_PASSWORD required for SASL_SSL');
+      throw new Error('KAFKA_USERNAME and KAFKA_PASSWORD required for SASL_SSL');
     }
 
+    // DigitalOcean Managed Kafka uses SCRAM-SHA-256
     const sasl: SASLOptions = {
-      mechanism: 'plain',
+      mechanism: 'scram-sha-256',
       username: envConfig.saslUsername,
       password: envConfig.saslPassword,
     };
