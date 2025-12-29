@@ -1,0 +1,38 @@
+{
+  "name": "customer-signals-copilot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Event ingestion, incident detection, and AI-powered incident summaries",
+  "workspaces": [
+    "packages/*",
+    "services/*",
+    "apps/*",
+    "tools/*",
+    "db"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "dev:ingest": "npm run dev --workspace=services/ingest-api",
+    "dev:engine": "npm run dev --workspace=services/incident-engine",
+    "dev:indexer": "npm run dev --workspace=services/indexer",
+    "dev:ai-worker": "npm run dev --workspace=services/ai-worker",
+    "dev:core": "npm run dev --workspace=services/core-api",
+    "dev:dashboard": "npm run dev --workspace=apps/dashboard",
+    "db:generate": "npm run generate --workspace=db",
+    "db:migrate": "npm run migrate --workspace=db",
+    "db:seed": "npm run seed --workspace=db",
+    "test": "npm test --workspaces --if-present",
+    "loadgen": "npm run start --workspace=tools/loadgen --",
+    "replay": "npm run start --workspace=tools/replay --",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0",
+    "tsx": "^4.7.0",
+    "vitest": "^1.6.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

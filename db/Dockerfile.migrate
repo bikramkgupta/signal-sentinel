@@ -1,0 +1,50 @@
+# =============================================================================
+# Dockerfile for database migrations (PRE_DEPLOY job)
+# Build from project root: docker build -f db/Dockerfile.migrate .
+# =============================================================================
+
+FROM node:20-alpine AS base
+
+# Install dependencies only when needed
+FROM base AS deps
+WORKDIR /app
+
+# Copy workspace config and package files
+COPY package.json package-lock.json ./
+COPY packages/shared-types/package.json ./packages/shared-types/
+COPY db/package.json ./db/
+
+# Install all dependencies
+RUN npm ci
+
+# Build stage
+FROM base AS builder
+WORKDIR /app
+
+# Copy node_modules from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/packages/shared-types/node_modules ./packages/shared-types/node_modules
+COPY --from=deps /app/db/node_modules ./db/node_modules
+
+# Copy source code
+COPY tsconfig.base.json ./
+COPY packages/shared-types ./packages/shared-types
+COPY db ./db
+
+# Build shared-types (db depends on it)
+RUN npm run build --workspace=packages/shared-types
+
+# Runner stage - run migrations directly with tsx
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Copy node_modules and source (tsx needs source files)
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages/shared-types ./packages/shared-types
+COPY --from=builder /app/db ./db
+COPY --from=builder /app/tsconfig.base.json ./
+
+# Run migrations
+CMD ["npx", "tsx", "db/migrate.ts"]

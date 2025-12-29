@@ -1,0 +1,32 @@
+# Customer Signals Copilot - DevContainer Environment Variables
+
+# Database
+DATABASE_URL=postgresql://postgres:password@postgres:5432/app
+PG_SSLMODE=disable
+
+# Kafka
+KAFKA_BROKERS=kafka:9092
+KAFKA_SECURITY_PROTOCOL=PLAINTEXT
+
+# OpenSearch
+OPENSEARCH_URL=http://opensearch:9200
+
+# S3-compatible Storage (RustFS/MinIO)
+SPACES_ENDPOINT=http://minio:9000
+SPACES_KEY_ID=rustfsadmin
+SPACES_SECRET_KEY=rustfsadmin
+SPACES_BUCKET_NAME=signals-local
+SPACES_FORCE_PATH_STYLE=true
+
+# Gradient AI (DigitalOcean) - user must set API key
+GRADIENT_BASE_URL=https://inference.do-ai.run/v1
+GRADIENT_API_KEY=
+GRADIENT_MODEL=llama3.3-70b-instruct
+
+# API Keys (for ingest-api)
+PROJECT_API_KEY=dev-api-key-12345
+
+# Service Ports
+INGEST_API_PORT=3000
+CORE_API_PORT=3001
+DASHBOARD_PORT=3002

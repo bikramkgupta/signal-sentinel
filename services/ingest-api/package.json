@@ -1,0 +1,22 @@
+{
+  "name": "@signals/ingest-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@signals/shared-types": "*",
+    "@signals/db": "*",
+    "fastify": "^4.25.0",
+    "kafkajs": "^2.2.4"
+  },
+  "devDependencies": {
+    "vitest": "^1.6.0"
+  }
+}

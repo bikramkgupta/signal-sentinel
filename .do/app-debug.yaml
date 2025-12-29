@@ -1,0 +1,115 @@
+# =============================================================================
+# Debug Container App Spec - Customer Signals Copilot
+# =============================================================================
+# Deploy this first to test connectivity to all managed services
+# before deploying the actual application services.
+#
+# Usage:
+#   doctl apps create --spec .do/app-debug.yaml
+#   doctl apps console <app-id> debug
+#   ./test-connectivity.sh
+# =============================================================================
+
+name: signals-debug
+region: syd1
+
+services:
+  - name: debug
+    # Build from tools/debug-container
+    dockerfile_path: tools/debug-container/Dockerfile
+    source_dir: tools/debug-container
+    github:
+      repo: bikramkgupta/customer-signals-copilot
+      branch: claude
+      deploy_on_push: false
+
+    # Minimal instance for debugging
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-0.5gb
+
+    # No HTTP route - this is a debug container
+    # Access via: doctl apps console <app-id> debug
+
+    envs:
+      # =========================================
+      # PostgreSQL (bindable from DO Managed DB)
+      # =========================================
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${db.DATABASE_URL}
+
+      # =========================================
+      # Kafka (bindable from DO Managed Kafka)
+      # NOTE: Kafka does NOT support trusted sources
+      # =========================================
+      - key: KAFKA_BROKERS
+        scope: RUN_TIME
+        value: ${kafka.HOSTNAME}:${kafka.PORT}
+      - key: KAFKA_USERNAME
+        scope: RUN_TIME
+        value: ${kafka.USERNAME}
+      - key: KAFKA_PASSWORD
+        scope: RUN_TIME
+        value: ${kafka.PASSWORD}
+      - key: KAFKA_CA_CERT
+        scope: RUN_TIME
+        value: ${kafka.CA_CERT}
+
+      # =========================================
+      # OpenSearch (bindable from DO Managed DB)
+      # =========================================
+      - key: OPENSEARCH_URL
+        scope: RUN_TIME
+        value: https://${search.USERNAME}:${search.PASSWORD}@${search.HOSTNAME}:${search.PORT}
+
+      # =========================================
+      # Spaces (S3-compatible) - via GitHub Secrets
+      # User must add these to GitHub Secrets:
+      #   SPACES_ACCESS_KEY, SPACES_SECRET_KEY
+      # =========================================
+      - key: SPACES_BUCKET
+        scope: RUN_TIME
+        value: signals-uploads
+      - key: SPACES_REGION
+        scope: RUN_TIME
+        value: syd1
+      - key: SPACES_ENDPOINT
+        scope: RUN_TIME
+        value: https://syd1.digitaloceanspaces.com
+      - key: SPACES_ACCESS_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: ${SPACES_ACCESS_KEY}
+      - key: SPACES_SECRET_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: ${SPACES_SECRET_KEY}
+
+# =============================================================================
+# Managed Databases - Attached via Bindable Variables
+# =============================================================================
+# IMPORTANT: These must be created BEFORE deploying this app spec.
+# See scripts/create-managed-services.sh for creation commands.
+# =============================================================================
+
+databases:
+  # PostgreSQL
+  - name: db
+    engine: PG
+    production: true
+    cluster_name: signals-postgres
+    db_name: signals_app
+    db_user: signals_user
+
+  # Kafka (NO trusted sources support)
+  - name: kafka
+    engine: KAFKA
+    production: true
+    cluster_name: signals-kafka
+
+  # OpenSearch
+  - name: search
+    engine: OPENSEARCH
+    production: true
+    cluster_name: signals-opensearch
+    db_user: signals_user

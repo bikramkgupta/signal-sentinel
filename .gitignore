@@ -1,4 +1,16 @@
 .claude
+.claude-logs
 .codex
 .gemini
 .cursor
+node_modules
+dist
+.next
+.dev-pids
+*.log
+.env
+.env.local
+.gradient-do.key
+*.key
+*.pem
+*.secret

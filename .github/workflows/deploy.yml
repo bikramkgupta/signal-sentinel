@@ -1,0 +1,84 @@
+# =============================================================================
+# Deploy Full Application to App Platform
+# =============================================================================
+# This workflow deploys the complete Customer Signals Copilot application.
+#
+# Triggers:
+#   - Push to 'claude' branch (automatic)
+#   - Manual trigger via "Run workflow"
+#
+# Prerequisites:
+#   - Managed services created (PostgreSQL, Kafka, OpenSearch, Spaces)
+#   - Debug container connectivity tests passed
+#   - GitHub Secrets configured
+# =============================================================================
+
+name: Deploy Application
+
+on:
+  push:
+    branches:
+      - claude
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+      - 'docs/**'
+  workflow_dispatch:
+    inputs:
+      force_rebuild:
+        description: 'Force rebuild (ignore cache)'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to App Platform
+        id: deploy
+        uses: digitalocean/app_action/deploy@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          app_spec_location: .do/app.yaml
+        env:
+          # Spaces credentials (from GitHub Secrets)
+          SPACES_ACCESS_KEY: ${{ secrets.SPACES_ACCESS_KEY }}
+          SPACES_SECRET_KEY: ${{ secrets.SPACES_SECRET_KEY }}
+          # Gradient AI (from GitHub Secrets)
+          GRADIENT_API_KEY: ${{ secrets.GRADIENT_API_KEY }}
+
+      - name: Output deployment info
+        if: success()
+        run: |
+          echo "## Deployment Successful" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**App ID:** ${{ fromJson(steps.deploy.outputs.app).id }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Live URL:** ${{ fromJson(steps.deploy.outputs.app).live_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Components" >> $GITHUB_STEP_SUMMARY
+          echo "- ingest-api (HTTP)" >> $GITHUB_STEP_SUMMARY
+          echo "- core-api (HTTP)" >> $GITHUB_STEP_SUMMARY
+          echo "- dashboard (HTTP)" >> $GITHUB_STEP_SUMMARY
+          echo "- indexer (Worker)" >> $GITHUB_STEP_SUMMARY
+          echo "- incident-engine (Worker)" >> $GITHUB_STEP_SUMMARY
+          echo "- ai-worker (Worker)" >> $GITHUB_STEP_SUMMARY
+          echo "- db-migrate (PRE_DEPLOY Job)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Output failure info
+        if: failure()
+        run: |
+          echo "## Deployment Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Check the logs above for details." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Troubleshooting" >> $GITHUB_STEP_SUMMARY
+          echo "1. Check build logs: \`doctl apps logs <app-id> <component> --type build\`" >> $GITHUB_STEP_SUMMARY
+          echo "2. Check deploy logs: \`doctl apps logs <app-id> <component> --type deploy\`" >> $GITHUB_STEP_SUMMARY
+          echo "3. Check runtime logs: \`doctl apps logs <app-id> <component> --type run\`" >> $GITHUB_STEP_SUMMARY

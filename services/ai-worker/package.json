@@ -1,0 +1,22 @@
+{
+  "name": "@signals/ai-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@signals/shared-types": "*",
+    "@signals/db": "*",
+    "drizzle-orm": "^0.29.0",
+    "kafkajs": "^2.2.4"
+  },
+  "devDependencies": {
+    "vitest": "^1.6.0"
+  }
+}

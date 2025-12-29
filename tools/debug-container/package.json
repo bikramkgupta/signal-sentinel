@@ -1,0 +1,14 @@
+{
+  "name": "debug-container",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Debug container for testing App Platform connectivity",
+  "scripts": {
+    "test": "node test-kafka.js",
+    "test:all": "./test-connectivity.sh"
+  },
+  "dependencies": {
+    "kafkajs": "^2.2.4",
+    "@aws-sdk/client-s3": "^3.700.0"
+  }
+}

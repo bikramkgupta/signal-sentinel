@@ -1,0 +1,314 @@
+# =============================================================================
+# Full Production App Spec - Customer Signals Copilot
+# =============================================================================
+# Deploy this after verifying connectivity with the debug container.
+#
+# Prerequisites:
+#   1. Managed services created (see scripts/create-managed-services.sh)
+#   2. Debug container connectivity tests passed
+#   3. GitHub Secrets configured:
+#      - DIGITALOCEAN_ACCESS_TOKEN
+#      - SPACES_ACCESS_KEY
+#      - SPACES_SECRET_KEY
+#      - GRADIENT_API_KEY
+#
+# Usage:
+#   doctl apps create --spec .do/app.yaml
+# =============================================================================
+
+name: signals-copilot
+region: syd1
+
+# =============================================================================
+# HTTP Services (with routes)
+# =============================================================================
+
+services:
+  # -------------------------------------------------------------------------
+  # Ingest API - Event ingestion endpoint
+  # -------------------------------------------------------------------------
+  - name: ingest-api
+    dockerfile_path: services/ingest-api/Dockerfile
+    github:
+      repo: bikramkgupta/customer-signals-copilot
+      branch: claude
+      deploy_on_push: true
+
+    http_port: 3000
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-1gb
+
+    routes:
+      - path: /v1/events
+      - path: /healthz
+
+    health_check:
+      http_path: /healthz
+      initial_delay_seconds: 10
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+
+    envs:
+      # PostgreSQL
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${db.DATABASE_URL}
+      # Kafka
+      - key: KAFKA_BROKERS
+        scope: RUN_TIME
+        value: ${kafka.HOSTNAME}:${kafka.PORT}
+      - key: KAFKA_USERNAME
+        scope: RUN_TIME
+        value: ${kafka.USERNAME}
+      - key: KAFKA_PASSWORD
+        scope: RUN_TIME
+        value: ${kafka.PASSWORD}
+      - key: KAFKA_CA_CERT
+        scope: RUN_TIME
+        value: ${kafka.CA_CERT}
+      - key: KAFKA_TOPIC
+        scope: RUN_TIME
+        value: signals.raw.v1
+
+  # -------------------------------------------------------------------------
+  # Core API - Incidents and search endpoint
+  # -------------------------------------------------------------------------
+  - name: core-api
+    dockerfile_path: services/core-api/Dockerfile
+    github:
+      repo: bikramkgupta/customer-signals-copilot
+      branch: claude
+      deploy_on_push: true
+
+    http_port: 3001
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-1gb
+
+    routes:
+      - path: /v1/incidents
+      - path: /v1/search
+      - path: /api/healthz
+
+    health_check:
+      http_path: /healthz
+      initial_delay_seconds: 10
+      period_seconds: 10
+
+    envs:
+      # PostgreSQL
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${db.DATABASE_URL}
+      # OpenSearch
+      - key: OPENSEARCH_URL
+        scope: RUN_TIME
+        value: https://${search.USERNAME}:${search.PASSWORD}@${search.HOSTNAME}:${search.PORT}
+
+  # -------------------------------------------------------------------------
+  # Dashboard - Next.js frontend
+  # -------------------------------------------------------------------------
+  - name: dashboard
+    dockerfile_path: apps/dashboard/Dockerfile
+    github:
+      repo: bikramkgupta/customer-signals-copilot
+      branch: claude
+      deploy_on_push: true
+
+    http_port: 3002
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-1gb
+
+    routes:
+      - path: /
+
+    health_check:
+      http_path: /
+      initial_delay_seconds: 15
+      period_seconds: 10
+
+    envs:
+      # Internal API URL (uses private networking)
+      - key: CORE_API_URL
+        scope: RUN_TIME
+        value: http://core-api:3001
+
+# =============================================================================
+# Workers (no HTTP routes - background processors)
+# =============================================================================
+
+workers:
+  # -------------------------------------------------------------------------
+  # Indexer - Kafka consumer → OpenSearch
+  # -------------------------------------------------------------------------
+  - name: indexer
+    dockerfile_path: services/indexer/Dockerfile
+    github:
+      repo: bikramkgupta/customer-signals-copilot
+      branch: claude
+      deploy_on_push: true
+
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-1gb
+
+    envs:
+      # Kafka
+      - key: KAFKA_BROKERS
+        scope: RUN_TIME
+        value: ${kafka.HOSTNAME}:${kafka.PORT}
+      - key: KAFKA_USERNAME
+        scope: RUN_TIME
+        value: ${kafka.USERNAME}
+      - key: KAFKA_PASSWORD
+        scope: RUN_TIME
+        value: ${kafka.PASSWORD}
+      - key: KAFKA_CA_CERT
+        scope: RUN_TIME
+        value: ${kafka.CA_CERT}
+      - key: KAFKA_TOPIC
+        scope: RUN_TIME
+        value: signals.raw.v1
+      - key: KAFKA_GROUP_ID
+        scope: RUN_TIME
+        value: indexer-group
+      # OpenSearch
+      - key: OPENSEARCH_URL
+        scope: RUN_TIME
+        value: https://${search.USERNAME}:${search.PASSWORD}@${search.HOSTNAME}:${search.PORT}
+
+  # -------------------------------------------------------------------------
+  # Incident Engine - Kafka consumer → PostgreSQL (rules and incidents)
+  # -------------------------------------------------------------------------
+  - name: incident-engine
+    dockerfile_path: services/incident-engine/Dockerfile
+    github:
+      repo: bikramkgupta/customer-signals-copilot
+      branch: claude
+      deploy_on_push: true
+
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-1gb
+
+    envs:
+      # PostgreSQL
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${db.DATABASE_URL}
+      # Kafka
+      - key: KAFKA_BROKERS
+        scope: RUN_TIME
+        value: ${kafka.HOSTNAME}:${kafka.PORT}
+      - key: KAFKA_USERNAME
+        scope: RUN_TIME
+        value: ${kafka.USERNAME}
+      - key: KAFKA_PASSWORD
+        scope: RUN_TIME
+        value: ${kafka.PASSWORD}
+      - key: KAFKA_CA_CERT
+        scope: RUN_TIME
+        value: ${kafka.CA_CERT}
+      - key: KAFKA_TOPIC
+        scope: RUN_TIME
+        value: signals.raw.v1
+      - key: KAFKA_GROUP_ID
+        scope: RUN_TIME
+        value: incident-engine-group
+      - key: KAFKA_AI_JOBS_TOPIC
+        scope: RUN_TIME
+        value: signals.ai.jobs.v1
+
+  # -------------------------------------------------------------------------
+  # AI Worker - Job processor → Gradient AI
+  # -------------------------------------------------------------------------
+  - name: ai-worker
+    dockerfile_path: services/ai-worker/Dockerfile
+    github:
+      repo: bikramkgupta/customer-signals-copilot
+      branch: claude
+      deploy_on_push: true
+
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-1gb
+
+    envs:
+      # PostgreSQL
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${db.DATABASE_URL}
+      # Kafka (for job notifications)
+      - key: KAFKA_BROKERS
+        scope: RUN_TIME
+        value: ${kafka.HOSTNAME}:${kafka.PORT}
+      - key: KAFKA_USERNAME
+        scope: RUN_TIME
+        value: ${kafka.USERNAME}
+      - key: KAFKA_PASSWORD
+        scope: RUN_TIME
+        value: ${kafka.PASSWORD}
+      - key: KAFKA_CA_CERT
+        scope: RUN_TIME
+        value: ${kafka.CA_CERT}
+      - key: KAFKA_AI_JOBS_TOPIC
+        scope: RUN_TIME
+        value: signals.ai.jobs.v1
+      - key: KAFKA_GROUP_ID
+        scope: RUN_TIME
+        value: ai-worker-group
+      # Gradient AI
+      - key: GRADIENT_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: ${GRADIENT_API_KEY}
+      - key: GRADIENT_MODEL
+        scope: RUN_TIME
+        value: llama-3.3-70b-versatile
+
+# =============================================================================
+# Managed Databases (Bindable Variables)
+# =============================================================================
+# IMPORTANT: These clusters must be created BEFORE deploying this app spec.
+# See scripts/create-managed-services.sh
+# =============================================================================
+
+databases:
+  # PostgreSQL
+  - name: db
+    engine: PG
+    production: true
+    cluster_name: signals-postgres
+    db_name: signals_app
+    db_user: signals_user
+
+  # Kafka (NO trusted sources support)
+  - name: kafka
+    engine: KAFKA
+    production: true
+    cluster_name: signals-kafka
+
+  # OpenSearch
+  - name: search
+    engine: OPENSEARCH
+    production: true
+    cluster_name: signals-opensearch
+    db_user: signals_user
+
+# =============================================================================
+# Jobs (one-time or scheduled tasks)
+# =============================================================================
+
+jobs:
+  # Database migrations (runs before deploy)
+  - name: db-migrate
+    dockerfile_path: db/Dockerfile.migrate
+    github:
+      repo: bikramkgupta/customer-signals-copilot
+      branch: claude
+
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    kind: PRE_DEPLOY
+
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${db.DATABASE_URL}

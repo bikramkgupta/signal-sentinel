@@ -1,0 +1,5 @@
+{"event_type":"error","occurred_at":"2025-01-15T12:00:00Z","message":"Database connection failed","severity":"error","attributes":{"error_code":"DB_CONN_FAIL","route":"/api/users"}}
+{"event_type":"error","occurred_at":"2025-01-15T12:00:01Z","message":"Database connection failed","severity":"error","attributes":{"error_code":"DB_CONN_FAIL","route":"/api/users"}}
+{"event_type":"error","occurred_at":"2025-01-15T12:00:02Z","message":"Database connection failed","severity":"error","attributes":{"error_code":"DB_CONN_FAIL","route":"/api/users"}}
+{"event_type":"error","occurred_at":"2025-01-15T12:00:03Z","message":"Database connection failed","severity":"error","attributes":{"error_code":"DB_CONN_FAIL","route":"/api/users"}}
+{"event_type":"error","occurred_at":"2025-01-15T12:00:04Z","message":"Database connection failed","severity":"error","attributes":{"error_code":"DB_CONN_FAIL","route":"/api/users"}}

@@ -1,0 +1,68 @@
+# =============================================================================
+# Deploy Debug Container to App Platform
+# =============================================================================
+# This workflow deploys ONLY the debug container for connectivity testing.
+# Trigger manually via "Run workflow" in GitHub Actions.
+#
+# Prerequisites:
+#   - Managed services created (PostgreSQL, Kafka, OpenSearch, Spaces)
+#   - GitHub Secrets configured: DIGITALOCEAN_ACCESS_TOKEN
+# =============================================================================
+
+name: Deploy Debug Container
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "debug" to confirm deployment'
+        required: true
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate confirmation
+        if: ${{ github.event.inputs.confirm != 'debug' }}
+        run: |
+          echo "::error::You must type 'debug' to confirm deployment"
+          exit 1
+
+  deploy:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy Debug Container to App Platform
+        id: deploy
+        uses: digitalocean/app_action/deploy@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          app_spec_location: .do/app-debug.yaml
+        env:
+          # Spaces credentials (from GitHub Secrets)
+          SPACES_ACCESS_KEY: ${{ secrets.SPACES_ACCESS_KEY }}
+          SPACES_SECRET_KEY: ${{ secrets.SPACES_SECRET_KEY }}
+
+      - name: Output deployment info
+        run: |
+          echo "## Debug Container Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "App ID: ${{ fromJson(steps.deploy.outputs.app).id }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Connect to debug container:" >> $GITHUB_STEP_SUMMARY
+          echo '   ```' >> $GITHUB_STEP_SUMMARY
+          echo '   doctl apps console ${{ fromJson(steps.deploy.outputs.app).id }} debug' >> $GITHUB_STEP_SUMMARY
+          echo '   ```' >> $GITHUB_STEP_SUMMARY
+          echo "2. Run connectivity tests inside container:" >> $GITHUB_STEP_SUMMARY
+          echo '   ```' >> $GITHUB_STEP_SUMMARY
+          echo '   ./test-connectivity.sh' >> $GITHUB_STEP_SUMMARY
+          echo '   ```' >> $GITHUB_STEP_SUMMARY
