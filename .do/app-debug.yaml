@@ -13,22 +13,24 @@
 name: signals-debug
 region: syd1
 
-# Workers don't have health checks - perfect for debug containers
-workers:
+# Services have health checks - debug container has built-in health server on port 8080
+services:
   - name: debug
-    # Build from tools/debug-container
-    dockerfile_path: tools/debug-container/Dockerfile
-    source_dir: tools/debug-container
-    github:
-      repo: bikramkgupta/customer-signals-copilot
-      branch: claude
-      deploy_on_push: false
+    # Use prebuilt debug container image from GHCR
+    # Source: https://github.com/bikramkgupta/do-app-debug-container
+    # Includes: psql, kcat, curl, dig, nmap, tcpdump, aws-cli, diagnose.sh, test-db.sh
+    image:
+      registry_type: GHCR
+      registry: ghcr.io
+      repository: bikramkgupta/debug-python
+      tag: latest
 
-    # Minimal instance for debugging
+    http_port: 8080  # Health server with web UI
     instance_count: 1
-    instance_size_slug: apps-s-1vcpu-0.5gb
+    instance_size_slug: apps-s-1vcpu-2gb
 
     # Access via: doctl apps console <app-id> debug
+    # Web UI: https://<app-url>/
 
     envs:
       # =========================================
