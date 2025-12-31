@@ -309,7 +309,7 @@ workers:
         value: ${GRADIENT_API_KEY}
       - key: GRADIENT_MODEL
         scope: RUN_TIME
-        value: llama-3.3-70b-versatile
+        value: llama3.3-70b-instruct
 
 # =============================================================================
 # Managed Databases (Bindable Variables)
