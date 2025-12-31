@@ -299,7 +299,10 @@ workers:
       - key: KAFKA_GROUP_ID
         scope: RUN_TIME
         value: ai-worker-group
-      # Gradient AI
+      # Gradient AI (DigitalOcean Serverless Inference)
+      - key: GRADIENT_BASE_URL
+        scope: RUN_TIME
+        value: https://inference.do-ai.run/v1
       - key: GRADIENT_API_KEY
         scope: RUN_TIME
         type: SECRET

@@ -24,17 +24,23 @@ interface PgEnvConfig {
 
 /**
  * Load Postgres configuration from environment variables
- * Prefers DATABASE_PRIVATE_URL (VPC) over DATABASE_URL (public)
+ * Uses DATABASE_URL from App Platform binding (VPC-enabled)
+ * Falls back to DATABASE_PRIVATE_URL for local dev
  */
 function loadPgEnvConfig(): PgEnvConfig {
-  const connectionString = process.env.DATABASE_PRIVATE_URL || process.env.DATABASE_URL;
-  if (!connectionString) {
-    throw new Error('DATABASE_URL or DATABASE_PRIVATE_URL environment variable is required');
+  const rawConnectionString = process.env.DATABASE_URL || process.env.DATABASE_PRIVATE_URL;
+  if (!rawConnectionString) {
+    throw new Error('DATABASE_URL environment variable is required');
   }
+
+  // Strip sslmode from connection string - we configure SSL separately
+  // This is needed for DigitalOcean managed databases with self-signed certs
+  const connectionString = rawConnectionString.replace(/[?&]sslmode=\w+/g, '').replace(/\?$/, '');
 
   return {
     connectionString,
-    sslMode: (process.env.PG_SSLMODE ?? 'disable') as SSLMode,
+    // Default to 'require' for production (DigitalOcean requires SSL)
+    sslMode: (process.env.PG_SSLMODE ?? 'require') as SSLMode,
     caCert: process.env.PG_CA_CERT,
   };
 }
