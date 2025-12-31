@@ -19,10 +19,12 @@ export interface OpenSearchEnvConfig {
 
 /**
  * Load OpenSearch configuration from environment variables
+ * Prefers OPENSEARCH_PRIVATE_URL (VPC) over OPENSEARCH_URL (public)
  */
 export function loadOpenSearchEnvConfig(): OpenSearchEnvConfig {
   return {
-    url: process.env.OPENSEARCH_URL ?? 'http://localhost:9200',
+    // Prefer OPENSEARCH_PRIVATE_URL (VPC) over OPENSEARCH_URL (public)
+    url: process.env.OPENSEARCH_PRIVATE_URL || process.env.OPENSEARCH_URL || 'http://localhost:9200',
     username: process.env.OPENSEARCH_USER,
     password: process.env.OPENSEARCH_PASS,
     caCert: process.env.OPENSEARCH_CA_CERT,

@@ -1,7 +1,7 @@
 # Customer Signals Copilot - Progress Tracker
 
-**Last Updated:** 2025-12-29T07:30:00Z
-**Status:** Debug Container Deployed, Connectivity Tested - Ready for Full App Deploy 🚀
+**Last Updated:** 2025-12-31T02:45:00Z
+**Status:** VPC Private Endpoints Configured - Ready for Full App Deploy 🚀
 
 ---
 
@@ -24,79 +24,94 @@
 | E2E Testing | ✅ Done | All acceptance criteria validated |
 | **Managed Services** | ✅ Done | PostgreSQL, Kafka, OpenSearch, Spaces in syd1 |
 | **GitHub Actions** | ✅ Done | deploy.yml, deploy-debug.yml workflows |
-| **Debug Container** | ✅ Done | Deployed and tested |
-| **Connectivity Tests** | ✅ Done | PostgreSQL & OpenSearch working |
+| **Debug Container** | ✅ Done | VPC + private endpoints configured |
+| **VPC Connectivity** | ✅ Done | All 3 services tested via private endpoints |
 
 ---
 
 ## NEXT STEPS (For New Session)
 
-### Current State (2025-12-29)
+### Current State (2025-12-31)
 
 **Managed Services Created (syd1 region):**
 
-| Service | ID | Status |
-|---------|-----|--------|
-| PostgreSQL | `8515e2ea-6989-4ac6-97b9-28cf13e3ef1c` | ✅ Online |
-| Kafka (3 nodes) | `265677d1-f15b-486d-872a-b9865f59130e` | ✅ Online |
-| OpenSearch | `75185ddb-e345-4407-beec-c321aa7e7940` | ✅ Online |
-| Spaces bucket | `signals-uploads` | ✅ Created |
+| Service | ID | Status | Trusted Sources |
+|---------|-----|--------|-----------------|
+| PostgreSQL | `8515e2ea-6989-4ac6-97b9-28cf13e3ef1c` | ✅ Online | VPC IP `10.126.0.9` |
+| Kafka (3 nodes) | `265677d1-f15b-486d-872a-b9865f59130e` | ✅ Online | None (not supported) |
+| OpenSearch | `75185ddb-e345-4407-beec-c321aa7e7940` | ✅ Online | VPC IP `10.126.0.9` |
+| Spaces bucket | `signals-uploads` | ✅ Created | N/A |
 
-**Debug Container:**
+**Debug Container (VPC Enabled):**
 
-| App | ID | Status |
-|-----|-----|--------|
-| signals-debug | `89430d61-53a9-4d94-903a-2115062ba53c` | ✅ ACTIVE |
+| App | ID | VPC ID | VPC Egress IP |
+|-----|-----|--------|---------------|
+| signals-debug | `2f50cb24-445e-4bfa-a187-d3a85a2fc7e0` | `20ccc9c3-2bad-40dc-9669-8d5ef784b765` | `10.126.0.9` |
 
-**Connectivity Test Results:**
+**VPC Private Endpoint Connectivity (Tested 2025-12-31):**
 
-| Service | Result | Notes |
-|---------|--------|-------|
-| PostgreSQL | ✅ PASSED | v16.11, connection successful |
-| OpenSearch | ✅ PASSED | Cluster GREEN, 1 node, 4 shards |
-| Kafka | ⚠️ Test script issue | SSL cert not configured for kcat, but **service code fixed** |
-| Spaces | ⚠️ Secrets not resolved | `${SPACES_*}` not resolved via doctl deploy |
+| Service | PUBLIC URL | PRIVATE URL | Notes |
+|---------|------------|-------------|-------|
+| PostgreSQL | ❌ DENIED | ✅ VPC (10.126.0.4) | Trusted sources block public |
+| OpenSearch | ❌ DENIED | ✅ VPC (green) | Trusted sources block public |
+| Kafka | ✅ Works | ✅ VPC (10.126.0.5/6/7) | No trusted sources (lower latency via VPC) |
 
-**Bug Fixes Applied:**
-- `packages/shared-types/src/kafka-config.ts` - Fixed for DO Managed Kafka:
-  - Now supports `KAFKA_USERNAME`/`KAFKA_PASSWORD` env vars
-  - Auto-detects `SASL_SSL` when credentials present
-  - Uses `scram-sha-256` mechanism (required by DO)
+**Critical: Dual-Variable Pattern for VPC**
+
+Bindable variables (`${db.DATABASE_URL}`) return PUBLIC hostnames even with VPC enabled.
+The app spec now uses BOTH public (bindable) and private (hardcoded) env vars:
+
+```yaml
+- key: DATABASE_URL           # Public (bindable) - denied by trusted sources
+  value: ${db.DATABASE_URL}
+- key: DATABASE_PRIVATE_URL   # Private (hardcoded) - works via VPC
+  value: postgresql://...@private-signals-postgres-xxx:25060/...
+```
+
+**Applications MUST use `*_PRIVATE_*` env vars for actual connections.**
 
 ### What's Done ✅
 
 1. **All Dockerfiles created** (8 total)
 2. **App specs configured:**
-   - `.do/app-debug.yaml` - Debug container (worker, not service)
-   - `.do/app.yaml` - Full production app spec
+   - `.do/app-debug.yaml` - Debug container with VPC + dual env vars
+   - `.do/app.yaml` - Full production app spec (needs VPC + private env vars update)
    - Both configured for `bikramkgupta/customer-signals-copilot` repo, `claude` branch
 3. **GitHub Actions workflows:**
    - `.github/workflows/deploy.yml` - Full app (triggers on push to claude)
    - `.github/workflows/deploy-debug.yml` - Debug container (manual trigger)
-4. **Managed services script:** `scripts/create-managed-services.sh` - Executes doctl commands
-5. **GitHub Secrets configured:**
+4. **GitHub Secrets configured:**
    - `DIGITALOCEAN_ACCESS_TOKEN`
    - `SPACES_ACCESS_KEY`
    - `SPACES_SECRET_KEY`
    - `GRADIENT_API_KEY`
+5. **Skills documentation updated** with VPC + private endpoint pattern
 
 ### What's Pending ⏳
 
-**Deploy Full Application:**
+**1. Update `.do/app.yaml` with VPC + private endpoints** (same pattern as app-debug.yaml)
+
+**2. Update service code to use `*_PRIVATE_*` env vars:**
+- Check if services read `DATABASE_PRIVATE_URL` or `DATABASE_URL`
+- May need to add fallback: `process.env.DATABASE_PRIVATE_URL || process.env.DATABASE_URL`
+
+**3. Deploy Full Application:**
 ```bash
 doctl apps create --spec .do/app.yaml
 ```
-
-Or wait for GitHub Actions to trigger on next push to `claude` branch.
 
 ### Quick Resume Commands
 
 ```bash
 # Check debug container status
-doctl apps get 89430d61-53a9-4d94-903a-2115062ba53c
+doctl apps get 2f50cb24-445e-4bfa-a187-d3a85a2fc7e0
 
-# Connect to debug container (interactive)
-doctl apps console 89430d61-53a9-4d94-903a-2115062ba53c debug
+# Connect to debug container via SDK
+python3 -c "
+from do_app_sandbox import Sandbox
+app = Sandbox.get_from_id(app_id='2f50cb24-445e-4bfa-a187-d3a85a2fc7e0', component='debug')
+print(app.exec('psql \"\$DATABASE_PRIVATE_URL\" -c \"SELECT 1\"').stdout)
+"
 
 # Deploy full application
 doctl apps create --spec .do/app.yaml
@@ -104,16 +119,17 @@ doctl apps create --spec .do/app.yaml
 # Check managed services
 doctl databases list
 
-# Check GitHub Actions runs
-gh run list --repo bikramkgupta/customer-signals-copilot
+# Get private connection strings
+doctl databases connection --private 8515e2ea-6989-4ac6-97b9-28cf13e3ef1c --format URI
 ```
 
 ### Important Notes
 
-1. **Kafka config fixed** - Service code now properly handles DO Managed Kafka's SCRAM-SHA-256 auth
-2. **Debug container is a worker** - Changed from `service` to `worker` to avoid health check failures
-3. **Spaces secrets** - Work properly when deployed via GitHub Actions (resolves `${SECRET_NAME}`)
+1. **VPC + Private Endpoints** - Apps MUST use `*_PRIVATE_*` env vars for VPC connectivity
+2. **Kafka config fixed** - Service code handles DO Managed Kafka's SCRAM-SHA-256 auth
+3. **Debug container is a service** - Has http_port 8080 for web UI
 4. **Kafka topics created:** `signals.raw.v1`, `signals.ai.jobs.v1`, `signals.dlq.v1`
+5. **Skills updated** - do-app-platform-skills repo has dual-variable pattern documented
 
 ---
 

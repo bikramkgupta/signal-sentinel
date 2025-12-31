@@ -19,6 +19,10 @@
 name: signals-copilot
 region: syd1
 
+# VPC Configuration - enables private network connectivity to managed databases
+vpc:
+  id: 20ccc9c3-2bad-40dc-9669-8d5ef784b765  # default-syd1
+
 # =============================================================================
 # HTTP Services (with routes)
 # =============================================================================
@@ -51,14 +55,21 @@ services:
       failure_threshold: 3
 
     envs:
-      # PostgreSQL
+      # PostgreSQL - PUBLIC (bindable) + PRIVATE (VPC)
       - key: DATABASE_URL
         scope: RUN_TIME
         value: ${db.DATABASE_URL}
-      # Kafka
+      - key: DATABASE_PRIVATE_URL
+        scope: RUN_TIME
+        type: SECRET
+        value: postgresql://signals_user:AVNS_vbKkd4lBC2NYQKi3I-x@private-signals-postgres-do-user-8198484-0.e.db.ondigitalocean.com:25060/signals_app?sslmode=require
+      # Kafka - PUBLIC (bindable) + PRIVATE (VPC)
       - key: KAFKA_BROKERS
         scope: RUN_TIME
         value: ${kafka.HOSTNAME}:${kafka.PORT}
+      - key: KAFKA_PRIVATE_BROKERS
+        scope: RUN_TIME
+        value: private-signals-kafka-do-user-8198484-0.e.db.ondigitalocean.com:25080
       - key: KAFKA_USERNAME
         scope: RUN_TIME
         value: ${kafka.USERNAME}
@@ -97,14 +108,22 @@ services:
       period_seconds: 10
 
     envs:
-      # PostgreSQL
+      # PostgreSQL - PUBLIC (bindable) + PRIVATE (VPC)
       - key: DATABASE_URL
         scope: RUN_TIME
         value: ${db.DATABASE_URL}
-      # OpenSearch
+      - key: DATABASE_PRIVATE_URL
+        scope: RUN_TIME
+        type: SECRET
+        value: postgresql://signals_user:AVNS_vbKkd4lBC2NYQKi3I-x@private-signals-postgres-do-user-8198484-0.e.db.ondigitalocean.com:25060/signals_app?sslmode=require
+      # OpenSearch - PUBLIC (bindable) + PRIVATE (VPC)
       - key: OPENSEARCH_URL
         scope: RUN_TIME
         value: https://${search.USERNAME}:${search.PASSWORD}@${search.HOSTNAME}:${search.PORT}
+      - key: OPENSEARCH_PRIVATE_URL
+        scope: RUN_TIME
+        type: SECRET
+        value: https://signals_user:AVNS_gW5RbaBwo73er8T_eDj@private-signals-opensearch-do-user-8198484-0.e.db.ondigitalocean.com:25060
 
   # -------------------------------------------------------------------------
   # Dashboard - Next.js frontend
@@ -153,10 +172,13 @@ workers:
     instance_size_slug: apps-s-1vcpu-1gb
 
     envs:
-      # Kafka
+      # Kafka - PUBLIC (bindable) + PRIVATE (VPC)
       - key: KAFKA_BROKERS
         scope: RUN_TIME
         value: ${kafka.HOSTNAME}:${kafka.PORT}
+      - key: KAFKA_PRIVATE_BROKERS
+        scope: RUN_TIME
+        value: private-signals-kafka-do-user-8198484-0.e.db.ondigitalocean.com:25080
       - key: KAFKA_USERNAME
         scope: RUN_TIME
         value: ${kafka.USERNAME}
@@ -172,10 +194,14 @@ workers:
       - key: KAFKA_GROUP_ID
         scope: RUN_TIME
         value: indexer-group
-      # OpenSearch
+      # OpenSearch - PUBLIC (bindable) + PRIVATE (VPC)
       - key: OPENSEARCH_URL
         scope: RUN_TIME
         value: https://${search.USERNAME}:${search.PASSWORD}@${search.HOSTNAME}:${search.PORT}
+      - key: OPENSEARCH_PRIVATE_URL
+        scope: RUN_TIME
+        type: SECRET
+        value: https://signals_user:AVNS_gW5RbaBwo73er8T_eDj@private-signals-opensearch-do-user-8198484-0.e.db.ondigitalocean.com:25060
 
   # -------------------------------------------------------------------------
   # Incident Engine - Kafka consumer → PostgreSQL (rules and incidents)
@@ -191,14 +217,21 @@ workers:
     instance_size_slug: apps-s-1vcpu-1gb
 
     envs:
-      # PostgreSQL
+      # PostgreSQL - PUBLIC (bindable) + PRIVATE (VPC)
       - key: DATABASE_URL
         scope: RUN_TIME
         value: ${db.DATABASE_URL}
-      # Kafka
+      - key: DATABASE_PRIVATE_URL
+        scope: RUN_TIME
+        type: SECRET
+        value: postgresql://signals_user:AVNS_vbKkd4lBC2NYQKi3I-x@private-signals-postgres-do-user-8198484-0.e.db.ondigitalocean.com:25060/signals_app?sslmode=require
+      # Kafka - PUBLIC (bindable) + PRIVATE (VPC)
       - key: KAFKA_BROKERS
         scope: RUN_TIME
         value: ${kafka.HOSTNAME}:${kafka.PORT}
+      - key: KAFKA_PRIVATE_BROKERS
+        scope: RUN_TIME
+        value: private-signals-kafka-do-user-8198484-0.e.db.ondigitalocean.com:25080
       - key: KAFKA_USERNAME
         scope: RUN_TIME
         value: ${kafka.USERNAME}
@@ -232,14 +265,21 @@ workers:
     instance_size_slug: apps-s-1vcpu-1gb
 
     envs:
-      # PostgreSQL
+      # PostgreSQL - PUBLIC (bindable) + PRIVATE (VPC)
       - key: DATABASE_URL
         scope: RUN_TIME
         value: ${db.DATABASE_URL}
-      # Kafka (for job notifications)
+      - key: DATABASE_PRIVATE_URL
+        scope: RUN_TIME
+        type: SECRET
+        value: postgresql://signals_user:AVNS_vbKkd4lBC2NYQKi3I-x@private-signals-postgres-do-user-8198484-0.e.db.ondigitalocean.com:25060/signals_app?sslmode=require
+      # Kafka (for job notifications) - PUBLIC (bindable) + PRIVATE (VPC)
       - key: KAFKA_BROKERS
         scope: RUN_TIME
         value: ${kafka.HOSTNAME}:${kafka.PORT}
+      - key: KAFKA_PRIVATE_BROKERS
+        scope: RUN_TIME
+        value: private-signals-kafka-do-user-8198484-0.e.db.ondigitalocean.com:25080
       - key: KAFKA_USERNAME
         scope: RUN_TIME
         value: ${kafka.USERNAME}
@@ -309,6 +349,11 @@ jobs:
     kind: PRE_DEPLOY
 
     envs:
+      # PostgreSQL - PUBLIC (bindable) + PRIVATE (VPC)
       - key: DATABASE_URL
         scope: RUN_TIME
         value: ${db.DATABASE_URL}
+      - key: DATABASE_PRIVATE_URL
+        scope: RUN_TIME
+        type: SECRET
+        value: postgresql://signals_user:AVNS_vbKkd4lBC2NYQKi3I-x@private-signals-postgres-do-user-8198484-0.e.db.ondigitalocean.com:25060/signals_app?sslmode=require

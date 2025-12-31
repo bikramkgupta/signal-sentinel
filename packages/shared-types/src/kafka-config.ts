@@ -25,6 +25,7 @@ export interface KafkaEnvConfig {
  * - KAFKA_USERNAME / KAFKA_SASL_USERNAME
  * - KAFKA_PASSWORD / KAFKA_SASL_PASSWORD
  *
+ * Prefers KAFKA_PRIVATE_BROKERS (VPC) over KAFKA_BROKERS (public).
  * Auto-detects SASL_SSL if username/password are provided.
  */
 export function loadKafkaEnvConfig(): KafkaEnvConfig {
@@ -37,7 +38,8 @@ export function loadKafkaEnvConfig(): KafkaEnvConfig {
   const securityProtocol = explicitProtocol ?? (username && password ? 'SASL_SSL' : 'PLAINTEXT');
 
   return {
-    brokers: process.env.KAFKA_BROKERS ?? 'localhost:9092',
+    // Prefer KAFKA_PRIVATE_BROKERS (VPC) over KAFKA_BROKERS (public)
+    brokers: process.env.KAFKA_PRIVATE_BROKERS || process.env.KAFKA_BROKERS || 'localhost:9092',
     securityProtocol,
     saslUsername: username,
     saslPassword: password,

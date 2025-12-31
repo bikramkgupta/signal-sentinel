@@ -11,9 +11,10 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
 
 async function runMigrations() {
-  const connectionString = process.env.DATABASE_URL;
+  // Prefer DATABASE_PRIVATE_URL (VPC) over DATABASE_URL (public)
+  const connectionString = process.env.DATABASE_PRIVATE_URL || process.env.DATABASE_URL;
   if (!connectionString) {
-    console.error('DATABASE_URL environment variable is required');
+    console.error('DATABASE_URL or DATABASE_PRIVATE_URL environment variable is required');
     process.exit(1);
   }
 

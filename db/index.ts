@@ -24,11 +24,12 @@ interface PgEnvConfig {
 
 /**
  * Load Postgres configuration from environment variables
+ * Prefers DATABASE_PRIVATE_URL (VPC) over DATABASE_URL (public)
  */
 function loadPgEnvConfig(): PgEnvConfig {
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString = process.env.DATABASE_PRIVATE_URL || process.env.DATABASE_URL;
   if (!connectionString) {
-    throw new Error('DATABASE_URL environment variable is required');
+    throw new Error('DATABASE_URL or DATABASE_PRIVATE_URL environment variable is required');
   }
 
   return {
