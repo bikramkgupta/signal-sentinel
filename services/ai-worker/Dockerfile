@@ -22,11 +22,9 @@ RUN npm ci
 FROM base AS builder
 WORKDIR /app
 
-# Copy node_modules from deps stage
+# Copy node_modules and package files from deps stage
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/packages/shared-types/node_modules ./packages/shared-types/node_modules
-COPY --from=deps /app/db/node_modules ./db/node_modules
-COPY --from=deps /app/services/ai-worker/node_modules ./services/ai-worker/node_modules
+COPY --from=deps /app/package.json /app/package-lock.json ./
 
 # Copy source code
 COPY tsconfig.base.json ./

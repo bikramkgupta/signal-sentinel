@@ -53,6 +53,10 @@ jobs:
           SPACES_SECRET_KEY: ${{ secrets.SPACES_SECRET_KEY }}
           # Gradient AI (from GitHub Secrets)
           GRADIENT_API_KEY: ${{ secrets.GRADIENT_API_KEY }}
+          # Private database connection strings (VPC endpoints)
+          DATABASE_PRIVATE_URL: ${{ secrets.DATABASE_PRIVATE_URL }}
+          KAFKA_PRIVATE_BROKERS: ${{ secrets.KAFKA_PRIVATE_BROKERS }}
+          OPENSEARCH_PRIVATE_URL: ${{ secrets.OPENSEARCH_PRIVATE_URL }}
 
       - name: Output deployment info
         if: success()
