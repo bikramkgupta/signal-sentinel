@@ -35,8 +35,8 @@ services:
     dockerfile_path: services/ingest-api/Dockerfile
     github:
       repo: bikramkgupta/customer-signals-copilot
-      branch: claude
-      deploy_on_push: true
+      branch: main
+      deploy_on_push: false  # GitHub Actions controls deployment
 
     http_port: 3000
     instance_count: 1
@@ -91,8 +91,8 @@ services:
     dockerfile_path: services/core-api/Dockerfile
     github:
       repo: bikramkgupta/customer-signals-copilot
-      branch: claude
-      deploy_on_push: true
+      branch: main
+      deploy_on_push: false  # GitHub Actions controls deployment
 
     http_port: 3001
     instance_count: 1
@@ -101,7 +101,9 @@ services:
     routes:
       - path: /v1/incidents
       - path: /v1/search
-      - path: /api/healthz
+      - path: /v1/metrics
+      - path: /v1/ai
+      - path: /healthz
 
     health_check:
       http_path: /healthz
@@ -133,8 +135,8 @@ services:
     dockerfile_path: apps/dashboard/Dockerfile
     github:
       repo: bikramkgupta/customer-signals-copilot
-      branch: claude
-      deploy_on_push: true
+      branch: main
+      deploy_on_push: false  # GitHub Actions controls deployment
 
     http_port: 3002
     instance_count: 1
@@ -166,8 +168,8 @@ workers:
     dockerfile_path: services/indexer/Dockerfile
     github:
       repo: bikramkgupta/customer-signals-copilot
-      branch: claude
-      deploy_on_push: true
+      branch: main
+      deploy_on_push: false  # GitHub Actions controls deployment
 
     instance_count: 1
     instance_size_slug: apps-s-1vcpu-1gb
@@ -212,8 +214,8 @@ workers:
     dockerfile_path: services/incident-engine/Dockerfile
     github:
       repo: bikramkgupta/customer-signals-copilot
-      branch: claude
-      deploy_on_push: true
+      branch: main
+      deploy_on_push: false  # GitHub Actions controls deployment
 
     instance_count: 1
     instance_size_slug: apps-s-1vcpu-1gb
@@ -261,8 +263,8 @@ workers:
     dockerfile_path: services/ai-worker/Dockerfile
     github:
       repo: bikramkgupta/customer-signals-copilot
-      branch: claude
-      deploy_on_push: true
+      branch: main
+      deploy_on_push: false  # GitHub Actions controls deployment
 
     instance_count: 1
     instance_size_slug: apps-s-1vcpu-1gb
@@ -350,7 +352,7 @@ jobs:
     dockerfile_path: db/Dockerfile.migrate
     github:
       repo: bikramkgupta/customer-signals-copilot
-      branch: claude
+      branch: main
 
     instance_size_slug: apps-s-1vcpu-0.5gb
     kind: PRE_DEPLOY

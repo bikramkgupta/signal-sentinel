@@ -16,8 +16,8 @@ async function runMigrations() {
   console.log('NODE_ENV:', process.env.NODE_ENV);
   console.log('Working directory:', process.cwd());
 
-  // Use DATABASE_URL from App Platform binding (automatically uses VPC when available)
-  const connectionString = process.env.DATABASE_URL || process.env.DATABASE_PRIVATE_URL;
+  // Prefer DATABASE_PRIVATE_URL (VPC) over DATABASE_URL (public) for trusted sources
+  const connectionString = process.env.DATABASE_PRIVATE_URL || process.env.DATABASE_URL;
   if (!connectionString) {
     console.error('ERROR: DATABASE_URL environment variable is required');
     console.error('Available env vars:', Object.keys(process.env).filter(k => k.includes('DATABASE') || k.includes('DB')).join(', '));

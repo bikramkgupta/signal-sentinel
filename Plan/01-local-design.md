@@ -1,4 +1,4 @@
-# Sentinel Dashboard - Design Document
+# Stage 1: Sentinel Dashboard - Design Document
 
 **Status**: COMPLETE
 **Last Updated**: 2026-01-01

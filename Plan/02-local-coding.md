@@ -1,4 +1,4 @@
-# Sentinel Dashboard - Coding Plan
+# Stage 2: Sentinel Dashboard - Coding Plan
 
 **Status**: COMPLETE
 **Last Updated**: 2026-01-01
