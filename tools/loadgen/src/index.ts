@@ -196,25 +196,41 @@ async function deployThenSpike(): Promise<void> {
   console.log('Deploy-then-spike scenario complete')
 }
 
+// Argument parsing helper
+function getArg(args: string[], name: string, defaultValue: string): string {
+  // Support both --name=value and --name value formats
+  const eqArg = args.find((a) => a.startsWith(`--${name}=`))
+  if (eqArg) return eqArg.split('=')[1]
+
+  const idx = args.indexOf(`--${name}`)
+  if (idx !== -1 && args[idx + 1]) return args[idx + 1]
+
+  return defaultValue
+}
+
 // Main
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2)
-  const scenarioArg = args.find((a) => a.startsWith('--scenario='))
-  const scenario = scenarioArg?.split('=')[1] || 'normal'
+
+  // Parse arguments - support both --scenario and --mode
+  const scenario = getArg(args, 'scenario', '') || getArg(args, 'mode', 'normal')
+  const duration = parseInt(getArg(args, 'duration', '60'), 10)
+  const rate = parseInt(getArg(args, 'rate', '50'), 10)
 
   console.log(`Load Generator - Scenario: ${scenario}`)
   console.log(`API URL: ${API_URL}`)
+  console.log(`Duration: ${duration}s, Rate: ${rate}`)
 
   switch (scenario) {
     case 'normal':
-      await normalTraffic(60)
+      await normalTraffic(duration)
       break
     case 'spike_errors':
-      await spikeErrors(50)
+      await spikeErrors(rate)
       break
     case 'drop_signups':
-      await dropSignups(30, 60)
+      await dropSignups(Math.floor(duration / 3), Math.floor(duration * 2 / 3))
       break
     case 'deploy_then_spike':
       await deployThenSpike()

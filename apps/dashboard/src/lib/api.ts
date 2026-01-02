@@ -182,3 +182,63 @@ export async function fetchAIJobs(params?: {
   if (!res.ok) throw new Error('Failed to fetch AI jobs')
   return res.json()
 }
+
+// Metrics Types
+export interface OverviewStats {
+  incidents: {
+    total: number
+    open: number
+    investigating: number
+    resolved_last_24h: number
+  }
+  errors: {
+    total_last_24h: number
+    rate_per_minute: number
+  }
+  signups: {
+    total_last_24h: number
+    rate_per_hour: number
+  }
+  ai: {
+    total_summaries: number
+    success_rate: number
+    pending_jobs: number
+  }
+}
+
+export interface TrendDataPoint {
+  timestamp: string
+  value: number
+}
+
+export interface TrendsResponse {
+  metric: 'errors' | 'signups'
+  period: '1h' | '24h' | '7d'
+  data: TrendDataPoint[]
+  summary: {
+    total: number
+    average: number
+    max: number
+    min: number
+  }
+}
+
+export async function fetchOverviewStats(): Promise<OverviewStats> {
+  const res = await fetch(`${API_BASE}/v1/metrics/overview`, {
+    cache: 'no-store',
+  })
+  if (!res.ok) throw new Error('Failed to fetch overview stats')
+  return res.json()
+}
+
+export async function fetchTrends(
+  metric: 'errors' | 'signups' = 'errors',
+  period: '1h' | '24h' | '7d' = '24h'
+): Promise<TrendsResponse> {
+  const res = await fetch(
+    `${API_BASE}/v1/metrics/trends?metric=${metric}&period=${period}`,
+    { cache: 'no-store' }
+  )
+  if (!res.ok) throw new Error('Failed to fetch trends')
+  return res.json()
+}
