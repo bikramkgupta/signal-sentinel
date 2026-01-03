@@ -2,7 +2,9 @@
  * API client for core-api
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+// In production (App Platform), all services share the same domain with path-based routing.
+// Use empty string for relative paths, or NEXT_PUBLIC_API_URL for local development.
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || ''
 
 export interface Incident {
   id: string
