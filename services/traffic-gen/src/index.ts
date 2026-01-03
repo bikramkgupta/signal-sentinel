@@ -17,6 +17,7 @@ let isShuttingDown = false;
 let eventTimer: ReturnType<typeof setTimeout> | null = null;
 let errorTimer: ReturnType<typeof setTimeout> | null = null;
 let deployTimer: ReturnType<typeof setTimeout> | null = null;
+let burstTimer: ReturnType<typeof setTimeout> | null = null;
 
 async function startTrafficGeneration(config: TrafficGenConfig): Promise<void> {
   const client = new IngestClient(config);
@@ -94,6 +95,46 @@ async function startTrafficGeneration(config: TrafficGenConfig): Promise<void> {
     deployTimer = setTimeout(() => void sendDeployEvent(), interval);
   };
 
+  // Error burst for triggering incidents (sends 35+ errors rapidly)
+  let burstCount = 0;
+  const sendErrorBurst = async (): Promise<void> => {
+    if (isShuttingDown) return;
+
+    burstCount++;
+    console.log(`\n🔥 BURST #${burstCount}: Sending ${config.burstSize} errors to trigger incident...`);
+
+    // Pick a consistent error type for this burst (same fingerprint = same incident)
+    const burstErrorTypes = ['DB_CONNECTION_POOL_EXHAUSTED', 'REDIS_CLUSTER_FAILOVER', 'API_GATEWAY_TIMEOUT'];
+    const errorType = burstErrorTypes[burstCount % burstErrorTypes.length];
+
+    let sent = 0;
+    for (let i = 0; i < config.burstSize; i++) {
+      if (isShuttingDown) break;
+
+      // Create error with consistent fingerprint
+      const event = generateError();
+      event.attributes.error_code = errorType;
+      event.attributes.route = '/api/critical-path';
+      event.message = `[BURST] ${errorType}: Service degradation detected`;
+
+      const success = await client.sendEvent(event);
+      if (success) sent++;
+
+      // Small delay between errors (50-150ms) to avoid overwhelming
+      await new Promise((resolve) => setTimeout(resolve, 50 + Math.random() * 100));
+    }
+
+    console.log(`🔥 BURST #${burstCount}: Sent ${sent}/${config.burstSize} errors (should trigger incident)\n`);
+    errorCount += sent;
+
+    // Schedule next burst
+    const jitter = Math.floor(Math.random() * 300000); // 0-5 min jitter
+    burstTimer = setTimeout(
+      () => void sendErrorBurst(),
+      config.burstIntervalMs + jitter
+    );
+  };
+
   console.log('Starting traffic generation...');
   console.log(
     `  Event interval: ${config.eventIntervalMs}ms (~${Math.round(60000 / config.eventIntervalMs)} events/min)`
@@ -101,6 +142,11 @@ async function startTrafficGeneration(config: TrafficGenConfig): Promise<void> {
   console.log(
     `  Error interval: ${config.errorIntervalMs}ms (~${Math.round(60 / (config.errorIntervalMs / 60000))} errors/hour)`
   );
+  if (config.burstEnabled) {
+    console.log(
+      `  Burst mode: ${config.burstSize} errors every ${Math.round(config.burstIntervalMs / 60000)} min (triggers incidents)`
+    );
+  }
 
   // Start all generators
   void sendNormalEvent();
@@ -114,6 +160,14 @@ async function startTrafficGeneration(config: TrafficGenConfig): Promise<void> {
   setTimeout(() => {
     if (!isShuttingDown) void sendDeployEvent();
   }, 30 * 60 * 1000);
+
+  // Start error bursts after 2 minutes (to establish some baseline first)
+  if (config.burstEnabled) {
+    console.log('  First burst will fire in 2 minutes...');
+    setTimeout(() => {
+      if (!isShuttingDown) void sendErrorBurst();
+    }, 2 * 60 * 1000);
+  }
 }
 
 function shutdown(signal: string): void {
@@ -126,6 +180,7 @@ function shutdown(signal: string): void {
   if (eventTimer) clearTimeout(eventTimer);
   if (errorTimer) clearTimeout(errorTimer);
   if (deployTimer) clearTimeout(deployTimer);
+  if (burstTimer) clearTimeout(burstTimer);
 
   console.log('Traffic generator stopped');
   process.exit(signal === 'UNHEALTHY' ? 1 : 0);

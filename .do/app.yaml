@@ -399,6 +399,18 @@ workers:
       - key: EVENT_ENVIRONMENT
         scope: RUN_TIME
         value: prod
+      # Burst mode - triggers incidents by sending 35+ errors rapidly
+      - key: BURST_ENABLED
+        scope: RUN_TIME
+        value: "true"
+      # Burst interval (ms) - every 15 min
+      - key: BURST_INTERVAL_MS
+        scope: RUN_TIME
+        value: "900000"
+      # Number of errors per burst (must exceed 30 to trigger incidents)
+      - key: BURST_SIZE
+        scope: RUN_TIME
+        value: "35"
 
 # =============================================================================
 # Managed Databases (Bindable Variables)

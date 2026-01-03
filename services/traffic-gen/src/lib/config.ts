@@ -21,6 +21,15 @@ export interface TrafficGenConfig {
 
   /** Environment to tag events with */
   environment: 'prod' | 'staging' | 'dev';
+
+  /** Enable error burst mode (triggers incidents) */
+  burstEnabled: boolean;
+
+  /** Interval between error bursts in milliseconds (default: 15 min) */
+  burstIntervalMs: number;
+
+  /** Number of errors to send in a burst (must exceed 30 to trigger incidents) */
+  burstSize: number;
 }
 
 export function loadConfig(): TrafficGenConfig {
@@ -40,5 +49,8 @@ export function loadConfig(): TrafficGenConfig {
       | 'prod'
       | 'staging'
       | 'dev',
+    burstEnabled: process.env.BURST_ENABLED !== 'false', // Default: enabled
+    burstIntervalMs: parseInt(process.env.BURST_INTERVAL_MS || '900000', 10), // 15 min
+    burstSize: parseInt(process.env.BURST_SIZE || '35', 10), // 35 errors
   };
 }
