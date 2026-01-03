@@ -358,6 +358,45 @@ workers:
         scope: RUN_TIME
         value: llama3.3-70b-instruct
 
+  # -------------------------------------------------------------------------
+  # Traffic Generator - Continuous synthetic traffic for demos/testing
+  # -------------------------------------------------------------------------
+  - name: traffic-gen
+    dockerfile_path: services/traffic-gen/Dockerfile
+    github:
+      repo: bikramkgupta/customer-signals-copilot
+      branch: main
+      deploy_on_push: false  # GitHub Actions controls deployment
+
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-0.5gb  # Minimal resources needed
+
+    envs:
+      # Ingest API - PRIVATE URL for VPC communication
+      - key: INGEST_API_PRIVATE_URL
+        scope: RUN_TIME
+        value: ${ingest-api.PRIVATE_URL}
+      # API Key for authentication
+      - key: API_KEY
+        scope: RUN_TIME
+        value: dev-api-key-12345
+      # Enable/disable traffic generation
+      - key: TRAFFIC_GEN_ENABLED
+        scope: RUN_TIME
+        value: "true"
+      # Event interval (ms) - ~10 events/min
+      - key: EVENT_INTERVAL_MS
+        scope: RUN_TIME
+        value: "6000"
+      # Error interval (ms) - 1 error every 5-10 min
+      - key: ERROR_INTERVAL_MS
+        scope: RUN_TIME
+        value: "420000"
+      # Environment tag for generated events
+      - key: EVENT_ENVIRONMENT
+        scope: RUN_TIME
+        value: prod
+
 # =============================================================================
 # Managed Databases (Bindable Variables)
 # =============================================================================
