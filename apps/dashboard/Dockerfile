@@ -60,7 +60,7 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/apps/dashboard/.next/standalone ./
 
 # Copy static assets into the correct location
-COPY --from=builder --chown=nextjs:nodejs /app/apps/dashboard/.next/static ./apps/dashboard/.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/apps/dashboard/.next/static ./.next/static
 
 # Copy node_modules - Next.js standalone in monorepo needs the root node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules

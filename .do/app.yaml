@@ -24,7 +24,69 @@ vpc:
   id: 20ccc9c3-2bad-40dc-9669-8d5ef784b765  # default-syd1
 
 # =============================================================================
-# HTTP Services (with routes)
+# Ingress Rules (path-based routing with path preservation)
+# =============================================================================
+# IMPORTANT: More specific paths must come before catch-all (/)
+# preserve_path_prefix ensures /v1/metrics/overview → core-api receives /v1/metrics/overview
+# =============================================================================
+
+ingress:
+  rules:
+    # Ingest API routes
+    - component:
+        name: ingest-api
+        preserve_path_prefix: true
+      match:
+        path:
+          prefix: /v1/events
+
+    # Core API routes
+    - component:
+        name: core-api
+        preserve_path_prefix: true
+      match:
+        path:
+          prefix: /v1/incidents
+
+    - component:
+        name: core-api
+        preserve_path_prefix: true
+      match:
+        path:
+          prefix: /v1/search
+
+    - component:
+        name: core-api
+        preserve_path_prefix: true
+      match:
+        path:
+          prefix: /v1/metrics
+
+    - component:
+        name: core-api
+        preserve_path_prefix: true
+      match:
+        path:
+          prefix: /v1/ai
+
+    # Health check (routed to ingest-api as entry point)
+    - component:
+        name: ingest-api
+        preserve_path_prefix: true
+      match:
+        path:
+          prefix: /healthz
+
+    # Dashboard (catch-all - must be last)
+    - component:
+        name: dashboard
+        preserve_path_prefix: true
+      match:
+        path:
+          prefix: /
+
+# =============================================================================
+# HTTP Services
 # =============================================================================
 
 services:
@@ -41,10 +103,6 @@ services:
     http_port: 3000
     instance_count: 1
     instance_size_slug: apps-s-1vcpu-1gb
-
-    routes:
-      - path: /v1/events
-      - path: /healthz
 
     health_check:
       http_path: /healthz
@@ -98,13 +156,6 @@ services:
     instance_count: 1
     instance_size_slug: apps-s-1vcpu-1gb
 
-    routes:
-      - path: /v1/incidents
-      - path: /v1/search
-      - path: /v1/metrics
-      - path: /v1/ai
-      - path: /healthz
-
     health_check:
       http_path: /healthz
       initial_delay_seconds: 10
@@ -141,9 +192,6 @@ services:
     http_port: 3002
     instance_count: 1
     instance_size_slug: apps-s-1vcpu-1gb
-
-    routes:
-      - path: /
 
     health_check:
       http_path: /
