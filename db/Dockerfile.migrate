@@ -45,5 +45,5 @@ COPY --from=builder /app/packages/shared-types ./packages/shared-types
 COPY --from=builder /app/db ./db
 COPY --from=builder /app/tsconfig.base.json ./
 
-# Run migrations
-CMD ["npx", "tsx", "db/migrate.ts"]
+# Run migrations, then seed (seed is idempotent with onConflictDoNothing)
+CMD ["sh", "-c", "npx tsx db/migrate.ts && npx tsx db/seed.ts"]
