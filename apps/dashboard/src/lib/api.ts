@@ -2,9 +2,28 @@
  * API client for core-api
  */
 
-// In production (App Platform), all services share the same domain with path-based routing.
-// Use empty string for relative paths, or NEXT_PUBLIC_API_URL for local development.
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || ''
+// Determine API base URL:
+// - Server-side (SSR): Use internal URL if available, otherwise construct from request
+// - Client-side: Use relative paths (same domain via App Platform routing)
+function getApiBase(): string {
+  // Server-side: check for internal URL first (App Platform VPC)
+  if (typeof window === 'undefined') {
+    // CORE_API_INTERNAL_URL is set to ${core-api.PRIVATE_URL} in production
+    if (process.env.CORE_API_INTERNAL_URL) {
+      return process.env.CORE_API_INTERNAL_URL
+    }
+    // Fallback for local development
+    if (process.env.NEXT_PUBLIC_API_URL) {
+      return process.env.NEXT_PUBLIC_API_URL
+    }
+    // Last resort: use localhost for local dev
+    return 'http://localhost:3001'
+  }
+  // Client-side: use relative paths (routed by App Platform ingress)
+  return process.env.NEXT_PUBLIC_API_URL || ''
+}
+
+const API_BASE = getApiBase()
 
 export interface Incident {
   id: string

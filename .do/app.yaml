@@ -198,8 +198,11 @@ services:
       initial_delay_seconds: 15
       period_seconds: 10
 
-    # No environment variables needed - dashboard uses relative URLs for API calls
-    # which get routed to core-api via App Platform path-based routing
+    envs:
+      # Internal URL for server-side rendering (SSR) API calls
+      - key: CORE_API_INTERNAL_URL
+        scope: RUN_TIME
+        value: ${core-api.PRIVATE_URL}
 
 # =============================================================================
 # Workers (no HTTP routes - background processors)
