@@ -10,9 +10,18 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { AlertCircle } from 'lucide-react'
 
 function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleString()
+  const date = new Date(dateStr)
+  return date.toLocaleString([], {
+    month: 'numeric',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
 }
 
 export default async function IncidentsPage() {
@@ -25,35 +34,62 @@ export default async function IncidentsPage() {
     error = e instanceof Error ? e.message : 'Failed to load incidents'
   }
 
+  const openCount = data?.incidents.filter(i => i.status === 'open').length || 0
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Incidents</h1>
-        <p className="text-muted-foreground">
-          Active and recent incidents detected by the system.
-        </p>
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="font-mono text-2xl font-semibold tracking-tight text-foreground">
+            INCIDENT REGISTRY
+          </h1>
+          <p className="font-mono text-xs text-muted-foreground mt-1">
+            ACTIVE AND RECENT INCIDENTS DETECTED BY THE SYSTEM
+          </p>
+        </div>
+        {openCount > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-red-500 shadow-glow-red animate-pulse-glow" />
+            <span className="font-mono text-xs text-red-400">
+              {openCount} OPEN
+            </span>
+          </div>
+        )}
       </div>
 
+      {/* Error Alert */}
       {error && (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
-          <p className="text-destructive">{error}</p>
-          <p className="text-sm text-destructive/80 mt-1">
-            Make sure core-api is running on port 3001
-          </p>
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 animate-fade-in-up">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-red-400 mt-0.5 drop-shadow-[0_0_4px_hsl(0_90%_55%/0.5)]" />
+            <div>
+              <p className="font-mono text-sm text-red-400">{error}</p>
+              <p className="font-mono text-xs text-red-400/70 mt-1">
+                ENSURE CORE-API IS RUNNING ON PORT 3001
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All Incidents</CardTitle>
-          <CardDescription>
-            {data?.incidents.length || 0} incidents found
-          </CardDescription>
+      {/* Incidents Table */}
+      <Card variant="glow">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>All Incidents</CardTitle>
+              <CardDescription className="font-mono text-[10px] tracking-wider mt-1">
+                {data?.incidents.length || 0} INCIDENTS FOUND
+              </CardDescription>
+            </div>
+            <AlertCircle className="h-4 w-4 text-primary drop-shadow-[0_0_4px_hsl(185_75%_50%/0.5)]" />
+          </div>
         </CardHeader>
         <CardContent>
           {data && data.incidents.length === 0 ? (
-            <div className="flex h-32 items-center justify-center text-muted-foreground">
-              No incidents found
+            <div className="flex h-32 items-center justify-center font-mono text-sm text-muted-foreground">
+              NO INCIDENTS FOUND
             </div>
           ) : (
             <Table>
@@ -73,7 +109,7 @@ export default async function IncidentsPage() {
                     <TableCell>
                       <Link
                         href={`/incidents/${incident.id}`}
-                        className="font-medium text-primary hover:underline"
+                        className="text-primary hover:text-primary/80 transition-colors"
                       >
                         {incident.title}
                       </Link>
@@ -104,7 +140,7 @@ export default async function IncidentsPage() {
                         {incident.severity}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="text-muted-foreground uppercase text-[10px] tracking-wider">
                       {incident.environment}
                     </TableCell>
                     <TableCell className="text-muted-foreground">

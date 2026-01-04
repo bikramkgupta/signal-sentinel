@@ -3,42 +3,49 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex items-center rounded-md border px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
   {
     variants: {
       variant: {
         default:
-          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+          "border-primary/30 bg-primary/10 text-primary shadow-glow-cyan",
         secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+          "border-muted-foreground/20 bg-secondary text-secondary-foreground",
         destructive:
-          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline: "text-foreground",
-        // Severity variants
+          "border-red-500/30 bg-red-500/10 text-red-400 shadow-glow-red",
+        outline: "border-border text-foreground",
+        // Severity variants - high contrast with glow
         critical:
-          "border-transparent bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+          "border-red-500/40 bg-red-500/15 text-red-400 shadow-glow-red",
         error:
-          "border-transparent bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+          "border-orange-500/40 bg-orange-500/15 text-orange-400 shadow-glow-amber",
         warn:
-          "border-transparent bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+          "border-yellow-500/40 bg-yellow-500/15 text-yellow-400 shadow-[0_0_10px_hsl(45_93%_50%/0.3)]",
         info:
-          "border-transparent bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+          "border-primary/40 bg-primary/15 text-primary shadow-glow-cyan",
         // Status variants
         open:
-          "border-transparent bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+          "border-red-500/40 bg-red-500/15 text-red-400 shadow-glow-red animate-pulse-glow",
         investigating:
-          "border-transparent bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+          "border-amber-500/40 bg-amber-500/15 text-amber-400 shadow-glow-amber",
         resolved:
-          "border-transparent bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+          "border-emerald-500/40 bg-emerald-500/15 text-emerald-400 shadow-glow-green",
         // Job status variants
         queued:
-          "border-transparent bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200",
+          "border-muted-foreground/30 bg-muted text-muted-foreground",
         running:
-          "border-transparent bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+          "border-primary/40 bg-primary/15 text-primary shadow-glow-cyan animate-pulse-glow",
         succeeded:
-          "border-transparent bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+          "border-emerald-500/40 bg-emerald-500/15 text-emerald-400 shadow-glow-green",
         failed:
-          "border-transparent bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+          "border-red-500/40 bg-red-500/15 text-red-400 shadow-glow-red",
+        // Environment badges
+        prod:
+          "border-red-500/30 bg-red-500/10 text-red-400",
+        staging:
+          "border-amber-500/30 bg-amber-500/10 text-amber-400",
+        dev:
+          "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
       },
     },
     defaultVariants: {
@@ -49,11 +56,20 @@ const badgeVariants = cva(
 
 export interface BadgeProps
   extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
+    VariantProps<typeof badgeVariants> {
+  pulse?: boolean
+}
 
-function Badge({ className, variant, ...props }: BadgeProps) {
+function Badge({ className, variant, pulse, ...props }: BadgeProps) {
   return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
+    <div
+      className={cn(
+        badgeVariants({ variant }),
+        pulse && "animate-pulse-glow",
+        className
+      )}
+      {...props}
+    />
   )
 }
 

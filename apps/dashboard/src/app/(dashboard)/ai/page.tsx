@@ -11,7 +11,7 @@ import {
   AIJob,
 } from '@/lib/api'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
@@ -21,29 +21,112 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Sparkles, CheckCircle2, XCircle, Clock, Loader2 } from 'lucide-react'
+import { Sparkles, CheckCircle2, XCircle, Clock, Loader2, Brain, Activity, AlertCircle, Cpu, Zap } from 'lucide-react'
 
 function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleString()
+  const date = new Date(dateStr)
+  return date.toLocaleString([], {
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
 }
 
-function ConfidenceBadge({ confidence }: { confidence: number }) {
+function ConfidenceMeter({ confidence }: { confidence: number }) {
   const percent = Math.round(confidence * 100)
-  const variant = percent >= 80 ? 'succeeded' : percent >= 60 ? 'investigating' : 'failed'
-  return <Badge variant={variant}>{percent}%</Badge>
+  const getColor = () => {
+    if (percent >= 80) return 'bg-emerald-500'
+    if (percent >= 60) return 'bg-amber-500'
+    return 'bg-red-500'
+  }
+  const getGlow = () => {
+    if (percent >= 80) return 'shadow-[0_0_8px_hsl(142_76%_50%/0.6)]'
+    if (percent >= 60) return 'shadow-[0_0_8px_hsl(38_92%_50%/0.6)]'
+    return 'shadow-[0_0_8px_hsl(0_90%_55%/0.6)]'
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+        <div
+          className={`h-full ${getColor()} ${getGlow()} transition-all duration-500`}
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+      <span className="font-mono text-xs text-foreground w-10 text-right">{percent}%</span>
+    </div>
+  )
 }
 
-function JobStatusIcon({ status }: { status: string }) {
-  switch (status) {
-    case 'succeeded':
-      return <CheckCircle2 className="h-4 w-4 text-green-500" />
-    case 'failed':
-      return <XCircle className="h-4 w-4 text-red-500" />
-    case 'running':
-      return <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
-    default:
-      return <Clock className="h-4 w-4 text-muted-foreground" />
+function JobStatusBadge({ status }: { status: string }) {
+  const config: Record<string, { icon: React.ReactNode; class: string }> = {
+    succeeded: {
+      icon: <CheckCircle2 className="h-3 w-3" />,
+      class: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+    },
+    failed: {
+      icon: <XCircle className="h-3 w-3" />,
+      class: 'bg-red-500/20 text-red-400 border-red-500/30'
+    },
+    running: {
+      icon: <Loader2 className="h-3 w-3 animate-spin" />,
+      class: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'
+    },
+    pending: {
+      icon: <Clock className="h-3 w-3" />,
+      class: 'bg-muted text-muted-foreground border-border'
+    },
   }
+
+  const { icon, class: className } = config[status] || config.pending
+
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded font-mono text-[10px] uppercase tracking-wider border ${className}`}>
+      {icon}
+      {status}
+    </span>
+  )
+}
+
+function StatCard({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+  iconColor = 'text-primary',
+  loading = false
+}: {
+  title: string
+  value: string | number
+  subtitle?: string
+  icon: React.ComponentType<{ className?: string }>
+  iconColor?: string
+  loading?: boolean
+}) {
+  return (
+    <Card variant="glow" className="hover-lift">
+      <CardContent className="pt-4 pb-4">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="tactical-label mb-1">{title}</p>
+            {loading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <p className="font-mono text-2xl font-bold text-foreground tracking-tight text-glow">
+                {value}
+              </p>
+            )}
+            {subtitle && (
+              <p className="font-mono text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>
+            )}
+          </div>
+          <Icon className={`h-5 w-5 ${iconColor} drop-shadow-[0_0_6px_currentColor]`} />
+        </div>
+      </CardContent>
+    </Card>
+  )
 }
 
 export default function AIPage() {
@@ -73,158 +156,156 @@ export default function AIPage() {
     loadData()
   }, [])
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">AI Insights</h1>
-          <p className="text-muted-foreground">
-            AI-powered incident analysis and summary generation.
-          </p>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <Card key={i}>
-              <CardHeader className="pb-2">
-                <Skeleton className="h-4 w-24" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-8 w-16" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    )
-  }
+  const systemStatus = error ? 'OFFLINE' : loading ? 'INITIALIZING' : 'ONLINE'
+  const statusColor = error ? 'text-red-400' : loading ? 'text-amber-400' : 'text-emerald-400'
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">AI Insights</h1>
-        <p className="text-muted-foreground">
-          AI-powered incident analysis and summary generation.
-        </p>
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="font-mono text-2xl font-semibold tracking-tight text-foreground">
+            AI INSIGHTS
+          </h1>
+          <p className="font-mono text-xs text-muted-foreground mt-1 flex items-center gap-2">
+            <Brain className="h-3 w-3" />
+            NEURAL ANALYSIS ENGINE
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={`h-2 w-2 rounded-full ${error ? 'bg-red-500 shadow-glow-red' : loading ? 'bg-amber-500 glow-amber' : 'bg-emerald-500 shadow-glow-success'} animate-pulse-glow`} />
+          <span className={`font-mono text-xs ${statusColor}`}>{systemStatus}</span>
+        </div>
       </div>
 
+      {/* Error Alert */}
       {error && (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
-          <p className="text-destructive">{error}</p>
-          <p className="text-sm text-destructive/80 mt-1">
-            Make sure core-api is running on port 3001
-          </p>
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 animate-fade-in-up">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-red-400 mt-0.5 drop-shadow-[0_0_4px_hsl(0_90%_55%/0.5)]" />
+            <div>
+              <p className="font-mono text-sm text-red-400">{error}</p>
+              <p className="font-mono text-xs text-red-400/70 mt-1">
+                ENSURE CORE-API IS RUNNING ON PORT 3001
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
-      {stats && (
-        <>
-          {/* Stats Grid */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Summaries</CardTitle>
-                <Sparkles className="h-4 w-4 text-purple-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.total_summaries}</div>
-                <p className="text-xs text-muted-foreground">
-                  {stats.summaries_last_24h} in last 24h
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.success_rate}%</div>
-                <p className="text-xs text-muted-foreground">
-                  {stats.jobs_by_status.succeeded || 0} succeeded, {stats.jobs_by_status.failed || 0} failed
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Avg Confidence</CardTitle>
-                <Sparkles className="h-4 w-4 text-blue-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {stats.avg_confidence ? `${Math.round(stats.avg_confidence * 100)}%` : 'N/A'}
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Models Used</CardTitle>
-                <Sparkles className="h-4 w-4 text-orange-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.models_used.length}</div>
-                <p className="text-xs text-muted-foreground truncate">
-                  {stats.models_used.map((m) => m.model).join(', ')}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+      {/* Stats Section */}
+      <div>
+        <div className="mb-3">
+          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+            System Metrics
+          </span>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            title="Total Summaries"
+            value={stats?.total_summaries ?? '-'}
+            subtitle={stats ? `${stats.summaries_last_24h} IN LAST 24H` : undefined}
+            icon={Sparkles}
+            iconColor="text-purple-400"
+            loading={loading}
+          />
+          <StatCard
+            title="Success Rate"
+            value={stats ? `${stats.success_rate}%` : '-'}
+            subtitle={stats ? `${stats.jobs_by_status.succeeded || 0} OK / ${stats.jobs_by_status.failed || 0} FAIL` : undefined}
+            icon={CheckCircle2}
+            iconColor="text-emerald-400"
+            loading={loading}
+          />
+          <StatCard
+            title="Avg Confidence"
+            value={stats?.avg_confidence ? `${Math.round(stats.avg_confidence * 100)}%` : 'N/A'}
+            icon={Activity}
+            iconColor="text-cyan-400"
+            loading={loading}
+          />
+          <StatCard
+            title="Models Active"
+            value={stats?.models_used.length ?? '-'}
+            subtitle={stats?.models_used.map(m => m.model).slice(0, 2).join(', ')}
+            icon={Cpu}
+            iconColor="text-amber-400"
+            loading={loading}
+          />
+        </div>
+      </div>
 
-          {/* Jobs by Status */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Jobs by Status</CardTitle>
-            </CardHeader>
-            <CardContent>
+      {/* Jobs Status */}
+      {stats && (
+        <div>
+          <div className="mb-3">
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              Job Queue Status
+            </span>
+          </div>
+          <Card variant="glow">
+            <CardContent className="pt-4 pb-4">
               <div className="flex flex-wrap gap-4">
                 {Object.entries(stats.jobs_by_status).map(([status, count]) => (
                   <div key={status} className="flex items-center gap-2">
-                    <JobStatusIcon status={status} />
-                    <span className="text-sm font-medium capitalize">{status}</span>
-                    <Badge variant="secondary">{count}</Badge>
+                    <JobStatusBadge status={status} />
+                    <span className="font-mono text-lg font-bold text-foreground">{count}</span>
                   </div>
                 ))}
               </div>
             </CardContent>
           </Card>
-        </>
+        </div>
       )}
 
       {/* Recent Activity */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent AI Activity</CardTitle>
-          <CardDescription>Latest AI-generated summaries</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {activity.length === 0 ? (
-            <div className="flex h-32 items-center justify-center text-muted-foreground">
-              No AI activity yet
+      <div>
+        <div className="mb-3">
+          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+            Neural Activity Feed
+          </span>
+        </div>
+        <Card variant="glow">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="font-mono">Recent Analyses</CardTitle>
+                <p className="font-mono text-[10px] tracking-wider text-muted-foreground mt-1">
+                  {activity.length} SUMMARIES GENERATED
+                </p>
+              </div>
+              <Sparkles className="h-4 w-4 text-primary drop-shadow-[0_0_4px_hsl(185_75%_50%/0.5)] animate-pulse-glow" />
             </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Summary</TableHead>
-                  <TableHead>Incident</TableHead>
-                  <TableHead>Confidence</TableHead>
-                  <TableHead>Model</TableHead>
-                  <TableHead>Created</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {activity.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">
-                      {item.title || 'Untitled'}
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        href={`/incidents/${item.incident_id}`}
-                        className="text-primary hover:underline"
-                      >
-                        {item.incident_title}
-                      </Link>
-                      <div className="mt-1">
+          </CardHeader>
+          <CardContent>
+            {activity.length === 0 ? (
+              <div className="flex flex-col h-32 items-center justify-center text-muted-foreground">
+                <Brain className="h-6 w-6 mb-2 opacity-50" />
+                <span className="font-mono text-sm">NO AI ACTIVITY YET</span>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Incident</TableHead>
+                    <TableHead>Severity</TableHead>
+                    <TableHead className="w-48">Confidence</TableHead>
+                    <TableHead>Model</TableHead>
+                    <TableHead>Time</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {activity.map((item) => (
+                    <TableRow key={item.id} className="animate-fade-in-up">
+                      <TableCell>
+                        <Link
+                          href={`/incidents/${item.incident_id}`}
+                          className="text-primary hover:text-primary/80 transition-colors font-mono text-sm"
+                        >
+                          {item.incident_title}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
                         <Badge
                           variant={
                             item.incident_severity === 'critical'
@@ -236,96 +317,106 @@ export default function AIPage() {
                         >
                           {item.incident_severity}
                         </Badge>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <ConfidenceBadge confidence={item.confidence} />
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {item.model}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {formatDate(item.created_at)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                      </TableCell>
+                      <TableCell>
+                        <ConfidenceMeter confidence={item.confidence} />
+                      </TableCell>
+                      <TableCell className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                        {item.model}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground whitespace-nowrap">
+                        {formatDate(item.created_at)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Job Queue */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Job Queue</CardTitle>
-          <CardDescription>Pending and recent AI jobs</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {jobs.length === 0 ? (
-            <div className="flex h-32 items-center justify-center text-muted-foreground">
-              No jobs in queue
+      <div>
+        <div className="mb-3">
+          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+            Processing Queue
+          </span>
+        </div>
+        <Card variant="glow">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="font-mono">Active Jobs</CardTitle>
+                <p className="font-mono text-[10px] tracking-wider text-muted-foreground mt-1">
+                  {jobs.length} JOBS IN QUEUE
+                </p>
+              </div>
+              <Zap className="h-4 w-4 text-amber-500 drop-shadow-[0_0_4px_hsl(38_92%_50%/0.5)]" />
             </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Incident</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Attempts</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Error</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {jobs.map((job) => (
-                  <TableRow key={job.id}>
-                    <TableCell>
-                      <Link
-                        href={`/incidents/${job.incident_id}`}
-                        className="font-medium text-primary hover:underline"
-                      >
-                        {job.incident_title}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {job.job_type}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <JobStatusIcon status={job.status} />
-                        <Badge
-                          variant={
-                            job.status === 'succeeded'
-                              ? 'succeeded'
-                              : job.status === 'failed'
-                              ? 'failed'
-                              : job.status === 'running'
-                              ? 'running'
-                              : 'queued'
-                          }
-                        >
-                          {job.status}
-                        </Badge>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {job.attempt_count} / {job.max_attempts}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {formatDate(job.created_at)}
-                    </TableCell>
-                    <TableCell className="max-w-xs truncate text-destructive" title={job.last_error || ''}>
-                      {job.last_error ? job.last_error.substring(0, 50) + '...' : '-'}
-                    </TableCell>
+          </CardHeader>
+          <CardContent>
+            {jobs.length === 0 ? (
+              <div className="flex flex-col h-32 items-center justify-center text-muted-foreground">
+                <Clock className="h-6 w-6 mb-2 opacity-50" />
+                <span className="font-mono text-sm">QUEUE EMPTY</span>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Incident</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Attempts</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead>Error</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {jobs.map((job) => (
+                    <TableRow key={job.id} className="animate-fade-in-up">
+                      <TableCell>
+                        <Link
+                          href={`/incidents/${job.incident_id}`}
+                          className="text-primary hover:text-primary/80 transition-colors font-mono text-sm"
+                        >
+                          {job.incident_title}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                        {job.job_type}
+                      </TableCell>
+                      <TableCell>
+                        <JobStatusBadge status={job.status} />
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-mono text-xs text-muted-foreground">
+                          {job.attempt_count}
+                          <span className="text-border">/</span>
+                          {job.max_attempts}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground whitespace-nowrap">
+                        {formatDate(job.created_at)}
+                      </TableCell>
+                      <TableCell className="max-w-xs">
+                        {job.last_error ? (
+                          <span className="font-mono text-xs text-red-400 truncate block" title={job.last_error}>
+                            {job.last_error.substring(0, 40)}...
+                          </span>
+                        ) : (
+                          <span className="font-mono text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

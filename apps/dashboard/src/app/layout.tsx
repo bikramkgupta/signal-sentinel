@@ -1,5 +1,9 @@
 import type { Metadata } from 'next'
 import { ThemeProvider } from '@/components/theme-provider'
+import '@fontsource/jetbrains-mono/400.css'
+import '@fontsource/jetbrains-mono/500.css'
+import '@fontsource/jetbrains-mono/600.css'
+import '@fontsource/jetbrains-mono/700.css'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -14,10 +18,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body>
+      <body className="font-sans antialiased">
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
+          defaultTheme="dark"
           enableSystem
           disableTransitionOnChange
         >
