@@ -1,4 +1,4 @@
-Build Prompt: Customer Signals Copilot (Spec v3, AI-buildable)
+Build Prompt: Sentinel (Spec v3, AI-buildable)
 
 Goal
 
@@ -299,3 +299,134 @@ Build order (recommended)
 	6.	ai-worker (leasing + retries + Gradient)
 	7.	core-api
 	8.	producers + fixtures
+	9.	dashboard (Next.js UI)
+	10.	traffic-gen (deployed continuous traffic worker)
+
+⸻
+
+Implementation Reference (exact versions and paths)
+
+This section documents the actual implementation choices. Use these exact
+versions and patterns when reproducing the build.
+
+Tech stack versions
+
+| Component | Version | Notes |
+|-----------|---------|-------|
+| Node.js | 20 LTS (node:20-alpine) | All Dockerfiles use this base |
+| TypeScript | ^5.3.0 | Strict mode, no `any` |
+| Fastify | 4.25 | HTTP services (ingest-api, core-api) |
+| Next.js | 14 | Dashboard (apps/dashboard/) |
+| React | 18 | With shadcn/ui, Radix, Tailwind |
+| Drizzle ORM | latest | Database queries + migrations |
+| KafkaJS | latest | All Kafka producers/consumers |
+| Vitest | ^1.6.0 | Test framework |
+| Zod | latest | Input validation (shared-types) |
+
+DigitalOcean managed service versions (doctl verified 2026-04-02)
+
+| Service | Available Versions | Used in DevContainer | Notes |
+|---------|-------------------|---------------------|-------|
+| PostgreSQL | 14, 15, 16, 17, 18 | postgres:18 | app.yaml does not pin version |
+| Kafka | 3.8 | cp-kafka:7.7.0 (~3.7) | Minor gap, unlikely to cause issues |
+| OpenSearch | 1, 2.19 | opensearch:3.0.0 | MISMATCH: DO max is 2.19, devcontainer uses 3.0 |
+
+Monorepo structure
+
+	npm workspaces (NOT pnpm/yarn)
+	Root package.json defines workspaces: packages/*, services/*, apps/*, tools/*, db
+
+File layout per service
+
+Each service follows the same pattern:
+	services/<name>/
+	  ├── src/index.ts        # Entry point
+	  ├── package.json        # @signals/<name> namespace
+	  ├── tsconfig.json
+	  └── Dockerfile          # Multi-stage: base → deps → builder → runner (node:20-alpine)
+
+Dashboard layout:
+	apps/dashboard/
+	  ├── src/app/            # Next.js App Router pages
+	  ├── src/components/     # shadcn/ui components + custom
+	  ├── src/lib/            # Utilities (cn(), API helpers)
+	  ├── Dockerfile          # Multi-stage with .next/static flattening
+	  └── next.config.js      # output: 'standalone'
+
+Database package:
+	db/
+	  ├── schema.ts           # 8 tables defined with Drizzle ORM
+	  ├── migrate.ts          # Migration runner
+	  ├── seed.ts             # Seeds org_123, proj_123, dev-api-key-12345
+	  ├── drizzle.config.ts
+	  ├── migrations/         # Generated SQL migrations
+	  └── Dockerfile.migrate  # PRE_DEPLOY job in App Platform
+
+Shared types package:
+	packages/shared-types/src/
+	  ├── event-envelope.ts   # EventEnvelope, RawEventInput, AISummary types
+	  ├── validator.ts        # Zod schema + validation
+	  ├── canonicalize.ts     # Normalize raw input → EventEnvelope
+	  ├── fingerprint.ts      # fingerprint(), getMetricName(), alignToMinuteBucket()
+	  ├── kafka-config.ts     # SASL_SSL/PLAINTEXT config builder, CA cert temp file
+	  ├── kafka-key.ts        # Partition key: org|project|error_code|route or org|project|event_type
+	  ├── opensearch-config.ts # OpenSearch client config with CA cert support
+	  └── index.ts            # Re-exports
+
+Environment variables per service
+
+ingest-api: DATABASE_URL, DATABASE_PRIVATE_URL, KAFKA_BROKERS, KAFKA_PRIVATE_BROKERS,
+  KAFKA_USERNAME, KAFKA_PASSWORD, KAFKA_CA_CERT, KAFKA_TOPIC
+
+core-api: DATABASE_URL, DATABASE_PRIVATE_URL, OPENSEARCH_URL, OPENSEARCH_PRIVATE_URL
+
+incident-engine: DATABASE_URL, DATABASE_PRIVATE_URL, KAFKA_BROKERS, KAFKA_PRIVATE_BROKERS,
+  KAFKA_USERNAME, KAFKA_PASSWORD, KAFKA_CA_CERT, KAFKA_TOPIC, KAFKA_GROUP_ID,
+  KAFKA_AI_JOBS_TOPIC
+
+indexer: KAFKA_BROKERS, KAFKA_PRIVATE_BROKERS, KAFKA_USERNAME, KAFKA_PASSWORD,
+  KAFKA_CA_CERT, KAFKA_TOPIC, KAFKA_GROUP_ID, OPENSEARCH_URL, OPENSEARCH_PRIVATE_URL
+
+ai-worker: DATABASE_URL, DATABASE_PRIVATE_URL, KAFKA_BROKERS, KAFKA_PRIVATE_BROKERS,
+  KAFKA_USERNAME, KAFKA_PASSWORD, KAFKA_CA_CERT, KAFKA_AI_JOBS_TOPIC, KAFKA_GROUP_ID,
+  GRADIENT_BASE_URL, GRADIENT_API_KEY, GRADIENT_MODEL
+
+dashboard: CORE_API_INTERNAL_URL (set to ${core-api.PRIVATE_URL} in app.yaml)
+
+traffic-gen: INGEST_API_PRIVATE_URL, API_KEY, TRAFFIC_GEN_ENABLED, EVENT_INTERVAL_MS,
+  ERROR_INTERVAL_MS, EVENT_ENVIRONMENT, BURST_ENABLED, BURST_INTERVAL_MS, BURST_SIZE
+
+Seed data (created by db/seed.ts)
+
+	org_id: org_123, name: "Demo Organization"
+	project_id: proj_123, name: "Demo Project"
+	API key: dev-api-key-12345 (stored as SHA-256 hash)
+
+Dockerfile pattern (all services)
+
+	FROM node:20-alpine AS base
+	FROM base AS deps       # npm ci --omit=dev for production deps
+	FROM base AS builder    # npm run build (TypeScript compile)
+	FROM base AS runner     # Copy dist + node_modules, USER node, CMD ["node", "dist/index.js"]
+
+App Platform deployment
+
+	CI/CD: GitHub Actions (.github/workflows/deploy.yml)
+	  - Uses digitalocean/app_action/deploy@v2
+	  - NOT deploy_on_push (can't inject GitHub Secrets into ${VAR} placeholders)
+	Spec: .do/app.yaml
+	  - 3 HTTP services: ingest-api (:3000), core-api (:3001), dashboard (:3002)
+	  - 4 workers: indexer, incident-engine, ai-worker, traffic-gen
+	  - 1 PRE_DEPLOY job: db-migrate
+	  - 3 managed DBs: db (PG), kafka (KAFKA), search (OPENSEARCH)
+	  - Ingress: path-based routing, preserve_path_prefix=true
+	  - Region: syd1, VPC-connected
+
+Dashboard design
+
+	Product name: "Sentinel"
+	UI: shadcn/ui + Radix, dark mode via next-themes
+	Charts: Recharts for time-series
+	Pages: Overview (stats, charts), Incidents (list, detail with AI summary),
+	  Search (OpenSearch query), Settings
+	API routes added to core-api: GET /v1/metrics/overview, GET /v1/metrics/trends

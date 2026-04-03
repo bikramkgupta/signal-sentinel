@@ -1,6 +1,6 @@
-# Customer Signals Copilot
+# Sentinel
 
-**Event-driven incident detection system with AI-powered summarization**
+**Detect incidents from customer signals in real time, with AI-generated summaries and root-cause analysis.**
 
 A production-ready observability platform that ingests application events, automatically detects incidents through pattern matching, and generates AI summaries to help engineers quickly understand and resolve issues.
 
@@ -12,7 +12,7 @@ A production-ready observability platform that ingests application events, autom
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│                              CUSTOMER SIGNALS COPILOT                            │
+│                              SENTINEL                            │
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                  │
 │   ┌──────────────┐      ┌─────────────────────────────────────────────────┐     │

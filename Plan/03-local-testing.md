@@ -36,7 +36,7 @@ This document details the testing strategy for the Sentinel dashboard. Testing w
 
 ```bash
 # From project root on Mac host
-cd /Users/bikram/Documents/Build/skills-test/customer-signals-copilot/customer-signals-copilot-main
+cd /Users/bikram/Documents/Build/skills-test/signal-sentinel
 
 # Start the devcontainer (builds if needed, starts all services)
 devcontainer up --workspace-folder .
@@ -205,7 +205,7 @@ doctl version  # Must be 1.82.0+
 docker info    # Docker must be running
 
 # Build each component using DO's build environment
-cd /Users/bikram/Documents/Build/skills-test/customer-signals-copilot/customer-signals-copilot-main
+cd /Users/bikram/Documents/Build/skills-test/signal-sentinel
 
 # Build using local app spec
 doctl app dev build --spec .do/app.yaml

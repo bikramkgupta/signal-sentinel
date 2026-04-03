@@ -1,7 +1,7 @@
 /**
  * @signals/shared-types
  *
- * Shared type definitions, validators, and utilities for the Customer Signals Copilot.
+ * Shared type definitions, validators, and utilities for the Sentinel.
  * This package is used by all services in the monorepo.
  */
 

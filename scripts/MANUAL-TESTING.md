@@ -10,23 +10,23 @@ All commands assume you are running inside the DevContainer. Container hostnames
 
 ## Kafka
 
-Container: `customer-signals-copilot-claude-kafka-1`
+Container: `signal-sentinel-kafka-1`
 Commands are in `/usr/bin/` (no `.sh` extension)
 
 ### List Topics
 ```bash
-docker exec customer-signals-copilot-claude-kafka-1 /usr/bin/kafka-topics --bootstrap-server localhost:9092 --list
+docker exec signal-sentinel-kafka-1 /usr/bin/kafka-topics --bootstrap-server localhost:9092 --list
 ```
 
 ### Describe a Topic
 ```bash
-docker exec customer-signals-copilot-claude-kafka-1 /usr/bin/kafka-topics --bootstrap-server localhost:9092 --describe --topic signals.raw.v1
+docker exec signal-sentinel-kafka-1 /usr/bin/kafka-topics --bootstrap-server localhost:9092 --describe --topic signals.raw.v1
 ```
 
 ### Consume Messages (Recent)
 ```bash
 # Consume last 5 messages with timeout
-docker exec customer-signals-copilot-claude-kafka-1 /usr/bin/kafka-console-consumer \
+docker exec signal-sentinel-kafka-1 /usr/bin/kafka-console-consumer \
   --bootstrap-server localhost:9092 \
   --topic signals.raw.v1 \
   --from-beginning \
@@ -36,12 +36,12 @@ docker exec customer-signals-copilot-claude-kafka-1 /usr/bin/kafka-console-consu
 
 ### List Consumer Groups
 ```bash
-docker exec customer-signals-copilot-claude-kafka-1 /usr/bin/kafka-consumer-groups --bootstrap-server localhost:9092 --list
+docker exec signal-sentinel-kafka-1 /usr/bin/kafka-consumer-groups --bootstrap-server localhost:9092 --list
 ```
 
 ### Check Consumer Group Lag
 ```bash
-docker exec customer-signals-copilot-claude-kafka-1 /usr/bin/kafka-consumer-groups \
+docker exec signal-sentinel-kafka-1 /usr/bin/kafka-consumer-groups \
   --bootstrap-server localhost:9092 \
   --describe \
   --group <group-name>
@@ -117,41 +117,41 @@ curl http://opensearch:9200/signals-events-v1/_mapping?pretty
 
 ## PostgreSQL
 
-Container: `customer-signals-copilot-claude-postgres-1`
+Container: `signal-sentinel-postgres-1`
 Database: `app`
 
 ### Interactive Shell
 ```bash
-docker exec -it customer-signals-copilot-claude-postgres-1 psql -U postgres -d app
+docker exec -it signal-sentinel-postgres-1 psql -U postgres -d app
 ```
 
 ### Count Incidents
 ```bash
-docker exec customer-signals-copilot-claude-postgres-1 psql -U postgres -d app \
+docker exec signal-sentinel-postgres-1 psql -U postgres -d app \
   -c "SELECT COUNT(*) FROM incidents;"
 ```
 
 ### View Incidents
 ```bash
-docker exec customer-signals-copilot-claude-postgres-1 psql -U postgres -d app \
+docker exec signal-sentinel-postgres-1 psql -U postgres -d app \
   -c "SELECT id, status, severity, title, opened_at FROM incidents ORDER BY opened_at DESC;"
 ```
 
 ### View Incident Events
 ```bash
-docker exec customer-signals-copilot-claude-postgres-1 psql -U postgres -d app \
+docker exec signal-sentinel-postgres-1 psql -U postgres -d app \
   -c "SELECT * FROM incident_events ORDER BY occurred_at DESC LIMIT 10;"
 ```
 
 ### View AI Outputs
 ```bash
-docker exec customer-signals-copilot-claude-postgres-1 psql -U postgres -d app \
+docker exec signal-sentinel-postgres-1 psql -U postgres -d app \
   -c "SELECT incident_id, output_type, model, created_at FROM ai_outputs;"
 ```
 
 ### List Tables
 ```bash
-docker exec customer-signals-copilot-claude-postgres-1 psql -U postgres -d app \
+docker exec signal-sentinel-postgres-1 psql -U postgres -d app \
   -c "\\dt"
 ```
 
@@ -245,6 +245,6 @@ Run all health checks at once:
 echo "=== Core-API ===" && curl -s http://localhost:3001/healthz | jq
 echo "=== OpenSearch ===" && curl -s http://opensearch:9200/_cluster/health | jq -r '.status'
 echo "=== Event Count ===" && curl -s http://opensearch:9200/signals-events-v1/_count | jq -r '.count'
-echo "=== Incident Count ===" && docker exec customer-signals-copilot-claude-postgres-1 psql -U postgres -d app -t -c "SELECT COUNT(*) FROM incidents;"
-echo "=== Kafka Topics ===" && docker exec customer-signals-copilot-claude-kafka-1 /usr/bin/kafka-topics --bootstrap-server localhost:9092 --list
+echo "=== Incident Count ===" && docker exec signal-sentinel-postgres-1 psql -U postgres -d app -t -c "SELECT COUNT(*) FROM incidents;"
+echo "=== Kafka Topics ===" && docker exec signal-sentinel-kafka-1 /usr/bin/kafka-topics --bootstrap-server localhost:9092 --list
 ```

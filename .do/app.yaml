@@ -1,5 +1,5 @@
 # =============================================================================
-# Full Production App Spec - Customer Signals Copilot
+# Full Production App Spec - Sentinel
 # =============================================================================
 # Deploy this after verifying connectivity with the debug container.
 #
@@ -96,7 +96,7 @@ services:
   - name: ingest-api
     dockerfile_path: services/ingest-api/Dockerfile
     github:
-      repo: bikramkgupta/customer-signals-copilot
+      repo: bikramkgupta/signal-sentinel
       branch: main
       deploy_on_push: false  # GitHub Actions controls deployment
 
@@ -148,7 +148,7 @@ services:
   - name: core-api
     dockerfile_path: services/core-api/Dockerfile
     github:
-      repo: bikramkgupta/customer-signals-copilot
+      repo: bikramkgupta/signal-sentinel
       branch: main
       deploy_on_push: false  # GitHub Actions controls deployment
 
@@ -185,7 +185,7 @@ services:
   - name: dashboard
     dockerfile_path: apps/dashboard/Dockerfile
     github:
-      repo: bikramkgupta/customer-signals-copilot
+      repo: bikramkgupta/signal-sentinel
       branch: main
       deploy_on_push: false  # GitHub Actions controls deployment
 
@@ -215,7 +215,7 @@ workers:
   - name: indexer
     dockerfile_path: services/indexer/Dockerfile
     github:
-      repo: bikramkgupta/customer-signals-copilot
+      repo: bikramkgupta/signal-sentinel
       branch: main
       deploy_on_push: false  # GitHub Actions controls deployment
 
@@ -261,7 +261,7 @@ workers:
   - name: incident-engine
     dockerfile_path: services/incident-engine/Dockerfile
     github:
-      repo: bikramkgupta/customer-signals-copilot
+      repo: bikramkgupta/signal-sentinel
       branch: main
       deploy_on_push: false  # GitHub Actions controls deployment
 
@@ -310,7 +310,7 @@ workers:
   - name: ai-worker
     dockerfile_path: services/ai-worker/Dockerfile
     github:
-      repo: bikramkgupta/customer-signals-copilot
+      repo: bikramkgupta/signal-sentinel
       branch: main
       deploy_on_push: false  # GitHub Actions controls deployment
 
@@ -367,7 +367,7 @@ workers:
   - name: traffic-gen
     dockerfile_path: services/traffic-gen/Dockerfile
     github:
-      repo: bikramkgupta/customer-signals-copilot
+      repo: bikramkgupta/signal-sentinel
       branch: main
       deploy_on_push: false  # GitHub Actions controls deployment
 
@@ -450,7 +450,7 @@ jobs:
   - name: db-migrate
     dockerfile_path: db/Dockerfile.migrate
     github:
-      repo: bikramkgupta/customer-signals-copilot
+      repo: bikramkgupta/signal-sentinel
       branch: main
 
     instance_size_slug: apps-s-1vcpu-0.5gb

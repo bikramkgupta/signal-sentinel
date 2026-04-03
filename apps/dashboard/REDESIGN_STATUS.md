@@ -53,7 +53,7 @@ font-family: 'JetBrains Mono', monospace
 
 ## How to Test
 ```bash
-cd /Users/bikram/Documents/Build/skills-test/customer-signals-copilot/customer-signals-copilot-main
+cd /Users/bikram/Documents/Build/skills-test/signal-sentinel
 npm run dev:dashboard
 # Open http://localhost:3002
 ```

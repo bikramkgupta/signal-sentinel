@@ -1,5 +1,5 @@
 # =============================================================================
-# Debug Container App Spec - Customer Signals Copilot
+# Debug Container App Spec - Sentinel
 # =============================================================================
 # Deploy this first to test connectivity to all managed services
 # before deploying the actual application services.

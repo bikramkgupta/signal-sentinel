@@ -1,7 +1,7 @@
 # =============================================================================
 # Deploy Full Application to App Platform
 # =============================================================================
-# This workflow deploys the complete Customer Signals Copilot application.
+# This workflow deploys the complete Sentinel application.
 #
 # Triggers:
 #   - Push to 'claude' branch (automatic)

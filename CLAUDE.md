@@ -1,356 +1,124 @@
-# CLAUDE.md
+# Project: Sentinel
 
-> AI assistant configuration for **customer-signals-copilot**
+Detect incidents from customer signals in real time, with AI-generated
+summaries and root-cause analysis. TypeScript/Node.js monorepo on
+DigitalOcean App Platform.
 
----
-
-## ⚠️ MANDATORY: Read Before Any Work
-
-### Required Skills Directory
-```
-.claude/skills/do-app-platform-skills/
-
-cd .claude/skills/do-app-platform-skills/ && git remote -v`
-```
-
-**Before touching deployment, infrastructure, databases, or networking:**
-1. Read `SKILL.md` in the root of that directory
-2. Read the relevant skill in `skills/<topic>/SKILL.md`
-
-| Task | Skill to Read First |
-|------|---------------------|
-| Create/modify `.do/app.yaml` | `skills/designer/SKILL.md` |
-| CI/CD, GitHub Actions | `skills/deployment/SKILL.md` |
-| Debug running containers | `skills/troubleshooting/SKILL.md` |
-| Database connections, pooling | `skills/postgres/SKILL.md` |
-| Domains, CORS, routing | `skills/networking/SKILL.md` |
-| Kafka, OpenSearch, Redis | `skills/managed-db-services/SKILL.md` |
-
----
-
-## 🚨 Critical: Remote Container Access
-
-### Use `do-app-sandbox` SDK — Never `doctl apps console`
-
-| Task | ✅ Correct Tool | ❌ Wrong Tool |
-|------|-----------------|---------------|
-| Live troubleshooting | `do-app-sandbox` | `doctl apps console` |
-| Read logs from container | `do-app-sandbox` | `doctl apps console` |
-| Execute commands remotely | `do-app-sandbox` | `doctl apps console` |
-| Upload hotfix files | `do-app-sandbox` | `doctl apps console` |
-
-**Why?** `doctl apps console` opens an interactive WebSocket terminal. It cannot be scripted or automated — it just hangs waiting for human input.
-
-```python
-# ✅ CORRECT: do-app-sandbox Python SDK
-from do_app_sandbox import AppSandbox
-
-sandbox = AppSandbox(app_id="your-app-id", component="incident-engine")
-result = sandbox.exec("cat /app/logs/error.log")
-print(result.stdout)
-
-# Upload a file to running container
-sandbox.upload("./local-fix.js", "/app/hotfix.js")
-```
+## Commands
 
 ```bash
-# ❌ WRONG: doctl apps console - interactive only, breaks automation
-doctl apps console <app-id> <component>  # Opens WebSocket, can't script this
-```
+# Development (npm workspaces monorepo)
+npm run dev:ingest      # Ingest API — port 3000
+npm run dev:core        # Core API — port 3001
+npm run dev:dashboard   # Next.js dashboard — port 3002
+npm run dev:engine      # Incident engine (Kafka consumer)
+npm run dev:indexer     # OpenSearch indexer (Kafka consumer)
+npm run dev:ai-worker   # AI job processor
 
----
+# Quality — run before committing
+npm run build           # TypeScript build (all workspaces)
+npm run lint            # ESLint (all workspaces)
+npm test                # Vitest (all workspaces)
 
-## Project Overview
-
-**customer-signals-copilot** — Event-driven incident detection system
-
-### Architecture
-```
-┌─────────────┐     ┌─────────────────┐     ┌──────────────────┐
-│ ingest-api  │────▶│ Kafka           │────▶│ incident-engine  │──▶ PostgreSQL
-│ (HTTP)      │     │ signals.raw.v1  │     │ (worker)         │
-└─────────────┘     └────────┬────────┘     └──────────────────┘
-                             │
-                             ├────────────▶ indexer ──▶ OpenSearch
-                             │
-┌─────────────┐     ┌────────┴────────┐     ┌──────────────────┐
-│ ai_jobs     │◀────│ incidents       │     │ Gradient AI      │
-│ (PG table)  │     │ (PG table)      │     │ (DO inference)   │
-└──────┬──────┘     └─────────────────┘     └────────┬─────────┘
-       │                                             │
-       └──────────▶ ai-worker ───────────────────────┘
-```
-
-### Services (`@signals/*` namespace)
-
-| Service | Local Dev | App Platform | Type | Purpose |
-|---------|-----------|--------------|------|---------|
-| `ingest-api` | :3000 | :8080 via `$PORT` | HTTP | Event ingestion, Kafka producer |
-| `core-api` | :3001 | :8080 via `$PORT` | HTTP | REST API for incidents/search |
-| `incident-engine` | — | — | Worker | Incident detection, lifecycle |
-| `indexer` | — | — | Worker | OpenSearch indexing |
-| `ai-worker` | — | — | Worker | Gradient AI summaries |
-| `dashboard` | :3002 | :8080 via `$PORT` | HTTP | Web UI |
-
-> **Note:** App Platform injects `$PORT` env var. Services bind to `$PORT` (or default for local). The `http_port` in `.do/app.yaml` tells App Platform which port to route to.
-
----
-
-## Development Commands
-
-**Use `npm` — this is an npm workspaces monorepo.**
-
-### Start Services
-```bash
-npm run dev:ingest      # Port 3000
-npm run dev:core        # Port 3001
-npm run dev:engine      # Kafka consumer
-npm run dev:indexer     # Kafka consumer
-npm run dev:ai-worker   # Job processor
-npm run dev:dashboard   # Port 3002
-```
-
-### Quality Checks
-```bash
-npm run lint            # ESLint
-npm test                # Vitest
-npm run build           # TypeScript build
-```
-
-### Database
-```bash
-npm run db:generate     # Generate Drizzle migrations
+# Database (Drizzle ORM)
+npm run db:generate     # Generate migrations from schema
 npm run db:migrate      # Apply migrations
-npm run db:seed         # Seed development data
+npm run db:seed         # Seed dev data (org, project, API key)
+
+# Traffic tools
+npm run loadgen -- --mode spike_errors --duration 600
+npm run replay -- --file fixtures/scenarios/spike_errors.ndjson
 ```
 
-### Testing Tools
-```bash
-npm run loadgen         # Synthetic event generator
-npm run replay          # NDJSON fixture replayer
-```
-
----
-
-## Codebase Map
+## Architecture
 
 ```
-├── services/                 # Fastify microservices
-│   ├── ingest-api/          # Event ingestion
-│   ├── core-api/            # REST API
-│   ├── incident-engine/     # Kafka → incidents
-│   ├── indexer/             # Kafka → OpenSearch
-│   └── ai-worker/           # Job queue processor
-├── apps/dashboard/          # Next.js frontend
-├── packages/
-│   ├── shared-types/        # Zod schemas, fingerprinting
-│   └── db/                  # Drizzle ORM (if exists)
-├── db/                      # Schema and migrations
-├── tools/                   # loadgen, replay, debug
-├── fixtures/scenarios/      # Test data
-├── .do/                     # App Platform spec
-│   └── app.yaml
-├── .claude/skills/          # ⚠️ READ THESE FOR DEPLOYMENTS
-│   └── do-app-platform-skills/
-└── Plan/                    # Implementation docs
+services/
+  ingest-api/          # HTTP → validates API key → publishes to Kafka
+  core-api/            # REST API for incidents, search, metrics
+  incident-engine/     # Kafka consumer → bucket upserts → incident detection
+  indexer/             # Kafka consumer → OpenSearch indexing
+  ai-worker/           # Leases ai_jobs from PG → calls Gradient AI
+  traffic-gen/         # Continuous synthetic traffic (deployed as worker)
+apps/dashboard/        # Next.js 14, shadcn/ui, Recharts
+packages/
+  shared-types/        # Zod schemas, EventEnvelope, fingerprint(), canonicalize()
+db/                    # Drizzle schema (schema.ts), migrations, seed, Dockerfile.migrate
+tools/                 # loadgen, replay CLI tools
+fixtures/scenarios/    # spike_errors.ndjson, drop_signups.ndjson
+.do/app.yaml           # App Platform spec (3 services, 4 workers, 1 job, 3 DBs)
 ```
-
-### Key Files
-
-| File | When to Read |
-|------|--------------|
-| `packages/shared-types/src/fingerprint.ts` | Changing incident grouping logic |
-| `db/schema.ts` | Database schema changes |
-| `.do/app.yaml` | Any infrastructure changes |
-| `Plan/*.md` | Understanding project phases |
-
----
 
 ## Code Patterns
 
-### Environment-Portable Design
+- **Bind to `$PORT`**: `process.env.PORT || 3000`. App Platform injects PORT.
+- **DB connection**: `process.env.DATABASE_PRIVATE_URL || process.env.DATABASE_URL` (VPC first).
+- **Named exports only**. TypeScript strict, no `any`. Zod for validation. Drizzle for queries.
+- **Kafka**: KafkaJS with SASL_SSL in prod, PLAINTEXT locally. CA cert from env var written to temp file at runtime.
+- **Fingerprinting**: errors = `error_code|route|env`, signups = `signup|env`, others = `event_type|env`.
+- **Metrics buckets**: 1-minute pre-aggregated counts. Incident rules query only bucket rows (max ~65), never raw events.
 
-Code must work in **local dev**, **Docker Compose**, AND **App Platform**.
+## Incident Detection Rules
 
-| Principle | Pattern |
-|-----------|---------|
-| **Bind to `$PORT`** | App Platform injects port; use `process.env.PORT \|\| 3000` |
-| **Never hardcode addresses** | Use env vars: `API_URL=''` means relative URLs |
-| **Public services = path routing** | Frontend calls `/v1/api/*`, App Platform routes to correct service |
-| **Internal services = no routes** | Workers, internal APIs use `${service.PRIVATE_URL}` |
-| **Flatten Dockerfile output** | Copy `.next/static` to `./.next/static`, not nested monorepo paths |
+- **Error spike** (Rule A): `count_5m >= 30 AND count_5m >= 3 * baseline_60m`
+- **Signup drop** (Rule B): `count_15m <= 10 AND baseline_prev_60m >= 40`
+- On trigger: find/create incident by `(project_id, env, fingerprint)`, enqueue ai_job, publish to `signals.ai.jobs.v1`.
+- Auto-resolve: periodic check every 5 min, resolve if `last_seen_at > 60 min ago`.
 
-#### Port Binding
-```typescript
-// ✅ App Platform injects PORT; local dev uses default
-const port = process.env.PORT || 3000
-server.listen({ port, host: '0.0.0.0' })
+## AI Worker
 
-// ❌ Hardcoded port - works locally, ignored by App Platform
-server.listen({ port: 3001 })  // App Platform uses http_port from app.yaml
-```
+- Leases jobs: `status='queued' AND run_after <= now() AND leased_until < now()`.
+- Sets `leased_until = now() + 2min` atomically.
+- On success: stores AI output in `ai_outputs`, updates incident title.
+- On failure: exponential backoff (base 5s, cap 120s), max 3 attempts.
+- LLM: Gradient AI (OpenAI-compatible), model `llama3.3-70b-instruct`.
 
-#### Service Communication
-```typescript
-// ✅ Public-facing service (dashboard → core-api via path routing)
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || ''
-fetch(`${API_BASE}/v1/incidents`)  // Relative URL works in App Platform
+## Critical Gotchas
 
-// ✅ Internal service-to-service (worker → internal-api)
-const INTERNAL_API = process.env.INTERNAL_API_URL  // Set to ${internal-api.PRIVATE_URL}
-fetch(`${INTERNAL_API}/process`)
+- **Metrics: pre-aggregated only**. Never `SELECT COUNT(*) FROM events`. Use `metrics_buckets` table.
+- **OpenSearch version mismatch**: DevContainer runs 3.0.0 but DO managed only offers up to 2.19. Avoid 3.0-only APIs.
+- **No `doctl apps console`**: It's interactive WebSocket, can't be scripted. Use `do-app-sandbox` SDK for remote container access.
+- **Kafka topics must pre-exist**: `signals.raw.v1`, `signals.ai.jobs.v1`, `signals.dlq.v1` (3 partitions, replication factor 2 in prod).
+- **Dashboard API calls**: Use relative paths (`/v1/incidents`) in production. `CORE_API_INTERNAL_URL` for SSR.
+- **DB migrations are immutable**: Never edit a deployed migration. Always create a new one.
 
-// ❌ Breaks in production
-fetch('http://localhost:3001/v1/incidents')
-fetch('http://core-api:3001/v1/incidents')  // Docker Compose DNS only
-```
+## Database (8 tables)
 
-#### Internal vs Public Services
-```yaml
-# app.yaml - Public service (has routes)
-services:
-  - name: core-api
-    http_port: 8080
-    routes:
-      - path: /v1/incidents
+`orgs` → `projects` → `project_api_keys` (tenancy)
+`incidents` → `incident_events` (incident lifecycle)
+`metrics_buckets` (pre-aggregated counts, unique on `project_id|env|metric|fingerprint|bucket_start|bucket_seconds`)
+`ai_jobs` (queue with leasing) → `ai_outputs` (AI summaries)
 
-# app.yaml - Internal service (no routes = private, use PRIVATE_URL)
-services:
-  - name: internal-processor
-    http_port: 8080
-    # No routes! Access via ${internal-processor.PRIVATE_URL}
-```
+## Kafka Topics
 
-#### Dockerfile Structure (Monorepos)
-```dockerfile
-# ✅ Flatten to production structure
-COPY --from=builder /app/apps/dashboard/.next/static ./.next/static
-
-# ❌ Nested path - server.js can't find assets
-COPY --from=builder /app/apps/dashboard/.next/static ./apps/dashboard/.next/static
-```
-
-### Database Connection Priority
-```typescript
-// Prefers VPC connection (faster, more secure)
-const url = process.env.DATABASE_PRIVATE_URL || process.env.DATABASE_URL;
-```
-
-### Event Fingerprinting
-```typescript
-// packages/shared-types/src/fingerprint.ts
-// Errors:  error_code | route | environment
-// Events:  event_type | environment
-```
-
-### Metrics: Pre-aggregated Only
-```sql
--- ✅ Use metrics_buckets table (1-minute aggregations)
-SELECT * FROM metrics_buckets WHERE bucket_time > NOW() - INTERVAL '1 hour';
-
--- ❌ Never range-scan raw events
-SELECT COUNT(*) FROM events WHERE created_at > ...;
-```
-
-### AI Job Queue
-- PostgreSQL-based with leasing (`ai_jobs` table)
-- `status`: pending → processing → completed/failed
-- Max 3 attempts with exponential backoff
-
-### Dashboard API
-```typescript
-// Production: relative paths (same domain via path routing)
-fetch('/api/incidents')
-
-// Local dev only: set NEXT_PUBLIC_API_URL
-fetch(`${process.env.NEXT_PUBLIC_API_URL}/incidents`)
-```
-
----
-
-## Don't Do This
-
-### ❌ Using `doctl apps console` for automation
-It's interactive-only. Use `do-app-sandbox` SDK.
-
-### ❌ Skipping the skills directory
-Always check `.claude/skills/do-app-platform-skills/` before deployment work.
-
-### ❌ Computing metrics on-the-fly
-Use pre-aggregated `metrics_buckets` table.
-
-### ❌ Raw SQL in application code
-Use Drizzle ORM for all queries.
-
-### ❌ Hardcoding API URLs in dashboard
-Use relative paths in production.
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|------------|
-| Runtime | Node.js 20 LTS |
-| Language | TypeScript 5.3 (strict) |
-| Backend | Fastify 4.25 |
-| Frontend | Next.js 14, React 18, Tailwind, shadcn/ui |
-| Database | PostgreSQL 18 + Drizzle ORM |
-| Search | OpenSearch 3.0 |
-| Queue | Kafka (KafkaJS) |
-| AI | Gradient AI (DO serverless) |
-| Testing | Vitest |
-| Platform | DigitalOcean App Platform |
-
----
-
-## DevContainer
-
-Open with VS Code/Cursor Dev Containers extension. Provides:
-- PostgreSQL
-- Kafka + Zookeeper  
-- OpenSearch
-- MinIO (S3-compatible)
-
-**Do not modify:**
-- Workspace path: `/workspaces/app`
-- Docker Compose service names
-
----
+| Topic | Key | Consumer Groups |
+|-------|-----|-----------------|
+| `signals.raw.v1` | `org\|project\|error_code\|route` (errors) or `org\|project\|event_type` | `indexer-group`, `incident-engine-group` |
+| `signals.ai.jobs.v1` | job_id | `ai-worker-group` |
+| `signals.dlq.v1` | original key | — |
 
 ## Deployment
 
-- **Platform**: DigitalOcean App Platform
-- **Spec**: `.do/app.yaml`
-- **CI/CD**: GitHub Actions (`.github/workflows/deploy.yml`)
-- **Migrations**: Separate job via `db/Dockerfile.migrate`
-- **Secrets**: GitHub Secrets → App Platform env vars
+- **Platform**: DigitalOcean App Platform, region `syd1`, VPC-connected.
+- **CI/CD**: GitHub Actions (`.github/workflows/deploy.yml`) — not `deploy_on_push`.
+- **Managed DBs**: PostgreSQL (PG), Kafka (KAFKA), OpenSearch (OPENSEARCH) — no versions pinned in app.yaml.
+- **Pre-deploy job**: `db-migrate` runs migrations + seed before each deploy.
+- **Skills directory**: Read `.claude/skills/do-app-platform-skills/` before any infra work.
 
-**Before deploying, always:**
-1. Read `.claude/skills/do-app-platform-skills/skills/deployment/SKILL.md`
-2. Validate spec: `doctl apps spec validate .do/app.yaml`
+## Tech Stack
 
----
+Node.js 20, TypeScript 5.3, Fastify 4.25, Next.js 14, React 18, Tailwind,
+shadcn/ui, Drizzle ORM, KafkaJS, OpenSearch, Gradient AI, Vitest.
 
-## AI Assistant Rules
+## When Compacting
 
-### Before Any Code Changes
-1. Run `npm run lint && npm test` after modifications
-2. Follow existing patterns in similar services
-3. Validate `.do/app.yaml` if changed
+Preserve: modified file list, failing test output, current git branch, and
+which Plan/ stage is in progress.
 
-### For Deployment/Infra Work
-1. Invoke `/do-app-platform-skills` — routes to the right sub-skill
-2. Use subagents for parallel exploration/planning when scope is uncertain
-3. Use `do-app-sandbox` SDK for remote container access
-4. **NEVER** use `doctl apps console` for scripted operations
+## Reference Docs
 
-### When Adding Dependencies
-- Ask before adding new packages
-- Prefer existing workspace packages
-
-### Code Style
-- TypeScript strict mode, no `any`
-- Zod for input validation
-- Drizzle for database queries
-- Explicit error handling
+- Build spec: `Task.md` (full MVP specification)
+- Deployment stages: `Plan/01-local-design.md` through `Plan/09-cloud-end-to-end.md`
+- App Platform skills: `.claude/skills/do-app-platform-skills/SKILL.md`
+- DB schema: `db/schema.ts`
+- App spec: `.do/app.yaml`

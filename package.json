@@ -1,8 +1,8 @@
 {
-  "name": "customer-signals-copilot",
+  "name": "signal-sentinel",
   "version": "0.1.0",
   "private": true,
-  "description": "Event ingestion, incident detection, and AI-powered incident summaries",
+  "description": "Detect incidents from customer signals in real time, with AI-generated summaries and root-cause analysis.",
   "workspaces": [
     "packages/*",
     "services/*",

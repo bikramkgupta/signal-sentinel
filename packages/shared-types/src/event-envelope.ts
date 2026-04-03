@@ -1,5 +1,5 @@
 /**
- * Event Envelope - Core type definitions for the Customer Signals Copilot
+ * Event Envelope - Core type definitions for the Sentinel
  *
  * This is the canonical event format used across all services.
  * Topic: signals.raw.v1

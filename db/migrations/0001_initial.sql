@@ -1,4 +1,4 @@
--- Customer Signals Copilot - Initial Schema
+-- Sentinel - Initial Schema
 -- This migration creates all tables required by the application.
 
 -- ============================================================================

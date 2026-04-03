@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# Create DO Managed Services for Customer Signals Copilot
+# Create DO Managed Services for Sentinel
 # =============================================================================
 # This script creates all managed services required for deployment.
 # Run with: ./scripts/create-managed-services.sh
@@ -20,7 +20,7 @@ NC='\033[0m'
 REGION="syd1"
 
 echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
-echo -e "${BLUE}  DO Managed Services Setup - Customer Signals Copilot      ${NC}"
+echo -e "${BLUE}  DO Managed Services Setup - Sentinel      ${NC}"
 echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
 echo ""
 echo -e "${YELLOW}Region: ${REGION}${NC}"

@@ -18,9 +18,11 @@ Create managed database clusters in DigitalOcean.
 ### 4.1 Create PostgreSQL Cluster
 
 ```bash
+# Available versions (verified 2026-04-02): 14, 15, 16, 17, 18
+# DevContainer uses postgres:18
 doctl databases create <app-name>-postgres \
   --engine pg \
-  --version 16 \
+  --version 18 \
   --region <region> \
   --size db-s-1vcpu-2gb \
   --num-nodes 1
@@ -46,6 +48,9 @@ doctl databases create <app-name>-kafka \
 ### 4.3 Create OpenSearch Cluster
 
 ```bash
+# Available versions (verified 2026-04-02): 1, 2.19
+# WARNING: DevContainer uses opensearch:3.0.0 but DO only offers up to 2.19
+# Use version 2 for production. Avoid 3.0-only APIs in code.
 doctl databases create <app-name>-opensearch \
   --engine opensearch \
   --version 2 \
