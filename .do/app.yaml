@@ -457,11 +457,7 @@ jobs:
     kind: PRE_DEPLOY
 
     envs:
-      # PostgreSQL - PUBLIC (bindable) + PRIVATE (VPC)
+      # PRE_DEPLOY job: use public bindable URL; add Postgres firewall rule app:<app-id>.
       - key: DATABASE_URL
         scope: RUN_TIME
         value: ${db.DATABASE_URL}
-      - key: DATABASE_PRIVATE_URL
-        scope: RUN_TIME
-        type: SECRET
-        value: ${DATABASE_PRIVATE_URL}

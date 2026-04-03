@@ -156,7 +156,7 @@ else
         --engine opensearch \
         --region "$REGION" \
         --size db-s-2vcpu-4gb \
-        --version 2 \
+        --version 2.19 \
         --wait
 
     OS_CLUSTER_ID=$(get_cluster_id "signals-opensearch")
