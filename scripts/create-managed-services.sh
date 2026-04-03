@@ -94,6 +94,15 @@ doctl databases db create "$PG_CLUSTER_ID" signals_app 2>/dev/null || echo "Data
 echo "Creating user 'signals_user'..."
 doctl databases user create "$PG_CLUSTER_ID" signals_user 2>/dev/null || echo "User may already exist"
 
+# Drizzle migrations require privileges on signals_app; DO default user is not owner of the app DB.
+echo "Setting database owner to signals_user (required for migrate/seed)..."
+ADMIN_URI=$(doctl databases connection "$PG_CLUSTER_ID" -o json | python3 -c "import json,sys; print(json.load(sys.stdin)['uri'])")
+if command -v psql >/dev/null 2>&1; then
+  psql "$ADMIN_URI" -v ON_ERROR_STOP=1 -c "ALTER DATABASE signals_app OWNER TO signals_user;" && echo -e "${GREEN}Owner set.${NC}"
+else
+  echo -e "${YELLOW}psql not found — run as doadmin: ALTER DATABASE signals_app OWNER TO signals_user;${NC}"
+fi
+
 echo -e "${GREEN}PostgreSQL setup complete!${NC}"
 echo ""
 
